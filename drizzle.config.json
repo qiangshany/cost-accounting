@@ -1,0 +1,11 @@
+{
+  "schema": "./src/storage/database/shared/schema.ts",
+  "out": "./src/storage/database/migrations",
+  "dialect": "postgresql",
+  "dbCredentials": {
+    "url": {
+      "from": "env",
+      "name": "COZE_SUPABASE_DB_URL"
+    }
+  }
+}
