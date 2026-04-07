@@ -98,7 +98,20 @@ export default function AdminPage() {
   // 加载数据
   useEffect(() => {
     const loadData = async () => {
+      // 如果日期或产品为空，不加载数据
+      if (!selectedDate || !selectedProduct) {
+        return;
+      }
+
       setIsLoading(true);
+      // 清空旧数据，避免闪烁
+      setSummaryData({
+        materials: { quantities: {}, costs: {}, prices: {} },
+        laborAndMaintenance: {},
+        periodExpenses: {},
+        adjustments: {},
+        workshops: [],
+      });
       try {
         const response = await fetch(
           `/api/admin-summary?date=${selectedDate}&product=${selectedProduct}`
@@ -113,6 +126,7 @@ export default function AdminPage() {
             adjustments: {},
             workshops: [],
           });
+          setIsLoading(false);
           return;
         }
 
@@ -126,6 +140,7 @@ export default function AdminPage() {
             adjustments: {},
             workshops: [],
           });
+          setIsLoading(false);
           return;
         }
 
