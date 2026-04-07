@@ -25,7 +25,7 @@ const MATERIAL_ITEMS: { name: string; unit: string }[] = [
   { name: '氨水', unit: '吨' },
   { name: '柴油', unit: '吨' },
   { name: '地表水', unit: '吨' },
-  { name: '电石渣', unit: '吨' },
+  { name: '硫铵、炉渣及细溴类', unit: '元' },
   { name: '化水药品费用', unit: '元' },
   { name: '锅炉清焦剂等', unit: '元' },
   { name: '脱硫、铲硝及输煤费', unit: '元' },
