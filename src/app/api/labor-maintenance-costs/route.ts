@@ -115,22 +115,32 @@ export async function DELETE(request: NextRequest) {
     const date = searchParams.get('date');
     const product = searchParams.get('product');
     const workshop = searchParams.get('workshop');
+    const costItemName = searchParams.get('costItemName');
 
-    if (!date || !product || !workshop) {
+    if (!date || !product) {
       return NextResponse.json(
-        { error: '缺少必填参数：日期、产品、车间' },
+        { error: '缺少必填参数：日期、产品' },
         { status: 400 }
       );
     }
 
     const client = getSupabaseClient();
 
-    const { error } = await client
+    let query = client
       .from('labor_maintenance_costs')
       .delete()
       .eq('report_date', date)
-      .eq('product', product)
-      .eq('workshop', workshop);
+      .eq('product', product);
+
+    if (workshop) {
+      query = query.eq('workshop', workshop);
+    }
+
+    if (costItemName) {
+      query = query.eq('cost_item_name', costItemName);
+    }
+
+    const { error } = await query;
 
     if (error) {
       throw new Error(`数据库操作失败: ${error.message}`);

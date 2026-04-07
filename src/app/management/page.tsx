@@ -390,8 +390,25 @@ export default function ManagementPage() {
     setIsLoading(true);
     try {
       // 提交工资及福利数据（按车间分别存储）
-      const salaryItems: SalaryItem[] = [];
+      // 先删除旧数据，再插入新数据
       const workshops = ['碱车间', '氯车间'];
+
+      // 删除所有车间的工资及福利数据
+      for (const workshop of workshops) {
+        const deleteSalaryResponse = await fetch(
+          `/api/labor-maintenance-costs?date=${selectedDate}&product=${selectedProduct}&workshop=${workshop}&costItemName=工资及福利`,
+          {
+            method: 'DELETE',
+          }
+        );
+
+        if (!deleteSalaryResponse.ok) {
+          throw new Error(`删除${workshop}旧工资及福利数据失败`);
+        }
+      }
+
+      // 提交工资及福利数据
+      const salaryItems: SalaryItem[] = [];
 
       workshops.forEach(workshop => {
         const amount = costData.workshopData.workshopLabor[workshop]?.['工资及福利'] || 0;
@@ -421,6 +438,19 @@ export default function ManagementPage() {
         }
       }
 
+      // 提交期间费用数据
+      // 先删除旧数据，再插入新数据
+      const deletePeriodResponse = await fetch(
+        `/api/period-expenses?date=${selectedDate}&product=${selectedProduct}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      if (!deletePeriodResponse.ok) {
+        throw new Error('删除旧期间费用数据失败');
+      }
+
       // 提交期间费用数据（只提交有金额的项目）
       const periodItems = PERIOD_EXPENSE_ITEMS
         .filter(item => (costData.managementData.periodExpenses[item.name] || 0) > 0)
@@ -444,6 +474,19 @@ export default function ManagementPage() {
         if (!periodResponse.ok) {
           throw new Error('期间费用数据提交失败');
         }
+      }
+
+      // 提交调整项数据
+      // 先删除旧数据，再插入新数据
+      const deleteAdjustmentResponse = await fetch(
+        `/api/adjustments?date=${selectedDate}&product=${selectedProduct}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      if (!deleteAdjustmentResponse.ok) {
+        throw new Error('删除旧调整项数据失败');
       }
 
       // 提交调整项数据（只提交有金额的项目）

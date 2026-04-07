@@ -279,6 +279,19 @@ export default function WorkshopPage() {
         }
       }
 
+      // 提交原材料成本数据
+      // 先删除旧数据，再插入新数据
+      const deleteMaterialResponse = await fetch(
+        `/api/material-costs?date=${selectedDate}&product=${selectedProduct}&workshop=${selectedWorkshop}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      if (!deleteMaterialResponse.ok) {
+        throw new Error('删除旧原材料数据失败');
+      }
+
       // 提交原材料成本数据（只提交有数量的材料）
       const materialItems = MATERIAL_ITEMS
         .filter(item => (costData.materials[item.name] || 0) > 0)
@@ -303,6 +316,19 @@ export default function WorkshopPage() {
         if (!materialResponse.ok) {
           throw new Error('原材料成本数据提交失败');
         }
+      }
+
+      // 提交人工与维护成本数据
+      // 先删除旧数据，再插入新数据
+      const deleteLaborResponse = await fetch(
+        `/api/labor-maintenance-costs?date=${selectedDate}&product=${selectedProduct}&workshop=${selectedWorkshop}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      if (!deleteLaborResponse.ok) {
+        throw new Error('删除旧人工与维护数据失败');
       }
 
       // 提交人工与维护成本数据（只提交有金额的项目）
