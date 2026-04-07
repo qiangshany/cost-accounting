@@ -16,14 +16,15 @@ const MATERIAL_ITEMS: { name: string; unit: string }[] = [
   { name: '原盐', unit: '元/吨' },
   { name: '网电', unit: '元/度' },
   { name: '纯碱', unit: '元/千克' },
-  { name: '三氯化铁', unit: '元/吨' },
-  { name: '亚硫酸钠', unit: '元/吨' },
+  { name: '三氯化铁', unit: '元/千克' },
+  { name: '亚硫酸钠', unit: '元/千克' },
   { name: '31%盐酸', unit: '元/吨' },
   { name: '32%液碱', unit: '元/吨' },
   { name: '硫酸', unit: '元/吨' },
   { name: '氨水', unit: '元/吨' },
-  { name: '柴油', unit: '元/吨' },
-  { name: '地表水', unit: '元/吨' },
+  { name: '柴油', unit: '元/升' },
+  { name: '地表水', unit: '元/立方米' },
+  { name: '电石渣', unit: '元/吨' },
 ];
 
 interface PriceData {
