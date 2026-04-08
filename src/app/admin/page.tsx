@@ -90,11 +90,11 @@ export default function AdminPage() {
   const [view, setView] = useState<'list' | 'analysis'>('list');
   const [isLoading, setIsLoading] = useState(false);
   
-  // 共享筛选状态
-  const today = new Date();
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: today,
-    to: today
+  // 共享筛选状态 - 使用函数初始化以避免SSR/客户端时间不一致
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return { from: now, to: now };
   });
   const [isStartCalendarOpen, setIsStartCalendarOpen] = useState(false);
   const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false);
@@ -140,6 +140,7 @@ export default function AdminPage() {
 
     setIsLoading(true);
     
+    // 在客户端计算今天的日期，避免SSR时区问题
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -232,6 +233,7 @@ export default function AdminPage() {
 
     setIsLoading(true);
     
+    // 在客户端计算今天的日期，避免SSR时区问题
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
