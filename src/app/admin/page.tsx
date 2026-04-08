@@ -14,6 +14,8 @@ import { Calculator, LogOut, TrendingUp, Calendar as CalendarIcon, Factory, Tras
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { cn } from '@/lib/utils';
 
 // 原材料类成本项及单位
 const MATERIAL_ITEMS: { name: string; unit: string }[] = [
@@ -610,6 +612,22 @@ function CostAnalysisView() {
   const [isStartCalendarOpen, setIsStartCalendarOpen] = useState(false);
   const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<string>('');
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  // 颜色配置
+  const COLORS = [
+    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+    '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+    '#14b8a6', '#a855f7', '#eab308', '#22c55e', '#0ea5e9'
+  ];
+
+  // 图表数据接口
+  interface ChartData {
+    name: string;
+    value: number;
+    percentage: string;
+    avgPrice: string;
+  }
 
   // 物料名称标准化
   const normalizeMaterialName = (name: string): string => {
@@ -697,6 +715,102 @@ function CostAnalysisView() {
     if (!selectedMaterial) return filteredData;
     return filteredData.filter(item => item.物料名称 === selectedMaterial);
   }, [filteredData, selectedMaterial]);
+
+  // 计算表格数据（按客户聚合）
+  const tableData = useMemo(() => {
+    if (!selectedMaterial || filteredData.length === 0) return [];
+
+    // 1. 过滤选定物料
+    const materialData = filteredData.filter(item => 
+      item.物料名称 === selectedMaterial
+    );
+    
+    // 2. 按客户聚合
+    const customerTotals = new Map<string, { quantity: number; totalPrice: number }>();
+    materialData.forEach(item => {
+      const current = customerTotals.get(item.客户) || { quantity: 0, totalPrice: 0 };
+      customerTotals.set(item.客户, {
+        quantity: current.quantity + (item.销售计划数量 || 0),
+        totalPrice: current.totalPrice + (item.价税合计 || 0)
+      });
+    });
+
+    const totalQuantity = Array.from(customerTotals.values()).reduce((sum, val) => sum + val.quantity, 0);
+    
+    // 3. 转换为表格数据
+    return Array.from(customerTotals.entries())
+      .filter(([_, val]) => val.quantity > 0)
+      .map(([name, val]) => ({
+        name,
+        value: val.quantity,
+        percentage: totalQuantity > 0 ? `${((val.quantity / totalQuantity) * 100).toFixed(2)}%` : '0%',
+        avgPrice: val.quantity > 0 ? (val.totalPrice / val.quantity).toFixed(2) : '0.00'
+      }))
+      .sort((a, b) => b.value - a.value); // 降序排列
+  }, [filteredData, selectedMaterial]);
+
+  // 饼图数据（前10客户，其余合并为"其他"）
+  const chartData = useMemo(() => {
+    if (tableData.length === 0) return [];
+    
+    const totalQuantity = tableData.reduce((sum, item) => sum + item.value, 0);
+    
+    // 如果客户数超过10，合并剩余客户为"其他"
+    if (tableData.length > 10) {
+      const top10 = tableData.slice(0, 10).map(item => ({ ...item }));
+      const others = tableData.slice(10);
+      
+      const otherValue = others.reduce((sum, item) => sum + item.value, 0);
+      const otherTotalPrice = others.reduce((sum, item) => sum + (item.value * parseFloat(item.avgPrice)), 0);
+      
+      top10.push({
+        name: '其他',
+        value: otherValue,
+        percentage: totalQuantity > 0 ? `${((otherValue / totalQuantity) * 100).toFixed(2)}%` : '0%',
+        avgPrice: otherValue > 0 ? (otherTotalPrice / otherValue).toFixed(2) : '0.00'
+      });
+      
+      return top10;
+    }
+
+    return tableData;
+  }, [tableData]);
+
+  // 计算每个扇区的中心角度和左右分配
+  const { leftLabels, rightLabels, sectorsWithAngle } = useMemo(() => {
+    if (chartData.length === 0) return { leftLabels: [], rightLabels: [], sectorsWithAngle: [] };
+    
+    const total = chartData.reduce((sum, item) => sum + item.value, 0);
+    const RADIAN = Math.PI / 180;
+    
+    // 计算每个扇区的中心角度
+    let currentAngle = 90; // 从顶部开始
+    const sectors = chartData.map((item, index) => {
+      const angle = (item.value / total) * 360;
+      const midAngle = currentAngle - angle / 2;
+      currentAngle -= angle;
+      return { ...item, index, midAngle };
+    });
+    
+    // 根据角度分配到左右两侧
+    // midAngle在90°~270°之间为左侧，否则为右侧
+    const left = sectors.filter(s => {
+      const normalizedAngle = ((s.midAngle % 360) + 360) % 360;
+      return normalizedAngle > 90 && normalizedAngle < 270;
+    }).sort((a, b) => {
+      // "其他"排在最前
+      if (a.name === '其他') return -1;
+      if (b.name === '其他') return 1;
+      return a.value - b.value; // 升序排列
+    });
+    
+    const right = sectors.filter(s => {
+      const normalizedAngle = ((s.midAngle % 360) + 360) % 360;
+      return normalizedAngle <= 90 || normalizedAngle >= 270;
+    }).sort((a, b) => b.value - a.value); // 降序排列
+    
+    return { leftLabels: left, rightLabels: right, sectorsWithAngle: sectors };
+  }, [chartData]);
 
   return (
     <div className="space-y-6">
@@ -866,9 +980,182 @@ function CostAnalysisView() {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <div className="flex items-center justify-center h-64 bg-slate-50 dark:bg-slate-800 rounded-lg">
-            <p className="text-slate-500 dark:text-slate-400">饼图功能待实现</p>
-          </div>
+          {chartData.length === 0 ? (
+            <div className="flex items-center justify-center h-64 bg-slate-50 dark:bg-slate-800 rounded-lg">
+              <p className="text-slate-500 dark:text-slate-400">
+                {!selectedMaterial ? '请选择物料后查看图表' : '暂无数据'}
+              </p>
+            </div>
+          ) : (
+            <div className="relative h-[500px]">
+              {/* SVG连线层 */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 900 500">
+                {(() => {
+                  if (sectorsWithAngle.length === 0 || hoveredIndex === null) return null;
+                  
+                  const RADIAN = Math.PI / 180;
+                  const cx = 450; // 饼图中心
+                  const cy = 250; // 饼图垂直中心
+                  const outerRadius = 150;
+                  
+                  const padding = 50;
+                  const labelX = 190; // 左侧标签X位置
+                  const rightLabelX = 710; // 右侧标签X位置
+                  
+                  // 找到当前悬浮的客户数据
+                  const hoveredItem = [...leftLabels, ...rightLabels].find(item => item.index === hoveredIndex);
+                  if (!hoveredItem) return null;
+                  
+                  // 判断是左侧还是右侧
+                  const isLeft = leftLabels.some(item => item.index === hoveredIndex);
+                  const labels = isLeft ? leftLabels : rightLabels;
+                  const labelIndex = labels.findIndex(item => item.index === hoveredIndex);
+                  const labelY = padding + (500 / (labels.length + 1)) * (labelIndex + 1);
+                  
+                  // 计算边缘点
+                  const edgeX = cx + outerRadius * Math.cos(-hoveredItem.midAngle * RADIAN);
+                  const edgeY = cy + outerRadius * Math.sin(-hoveredItem.midAngle * RADIAN);
+                  
+                  const targetX = isLeft ? labelX : rightLabelX;
+                  
+                  return (
+                    <path
+                      d={`M${edgeX},${edgeY}L${targetX},${labelY}`}
+                      fill="none"
+                      stroke={COLORS[hoveredIndex % COLORS.length]}
+                      strokeWidth={2.5}
+                      style={{ filter: `drop-shadow(0 0 4px ${COLORS[hoveredIndex % COLORS.length]}40)` }}
+                    />
+                  );
+                })()}
+              </svg>
+              
+              {/* 左侧标签列 */}
+              <div className="absolute left-0 top-0 bottom-0 w-[200px] flex flex-col justify-center py-12">
+                {leftLabels.map((item, i) => {
+                  const total = leftLabels.length;
+                  const padding = 50;
+                  const availableHeight = 500 - padding * 2;
+                  const labelY = padding + (availableHeight / (total + 1)) * (i + 1);
+                  const isHovered = hoveredIndex === item.index;
+                  
+                  return (
+                    <div 
+                      key={item.name} 
+                      className={cn(
+                        "absolute left-2 flex items-center gap-2 text-sm cursor-pointer transition-all",
+                        isHovered ? "font-semibold scale-105" : ""
+                      )}
+                      style={{ top: labelY, transform: 'translateY(-50%)' }}
+                      onMouseEnter={() => setHoveredIndex(item.index)}
+                      onMouseLeave={() => setHoveredIndex(null)}
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full transition-transform"
+                        style={{ 
+                          backgroundColor: COLORS[item.index % COLORS.length],
+                          transform: isHovered ? 'scale(1.3)' : 'scale(1)'
+                        }}
+                      />
+                      <span className="whitespace-nowrap">{item.name}: {item.percentage}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* 中间饼图 */}
+              <div className="absolute left-[200px] right-[200px] top-0 bottom-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={false}
+                      outerRadius={150}
+                      dataKey="value"
+                      startAngle={90}  // 从顶部12点开始
+                      endAngle={-270}  // 逆时针绘制
+                      onMouseEnter={(_, index) => setHoveredIndex(index)}
+                      onMouseLeave={() => setHoveredIndex(null)}
+                    >
+                      {chartData.map((_, index) => {
+                        const isHovered = hoveredIndex === index;
+                        return (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={COLORS[index % COLORS.length]}
+                            stroke={isHovered ? COLORS[index % COLORS.length] : "white"}
+                            strokeWidth={isHovered ? 3 : 2}
+                            style={{
+                              filter: isHovered ? 'brightness(1.1)' : 'none',
+                              transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+                              transformOrigin: 'center',
+                              transition: 'all 0.2s ease-out',
+                              cursor: 'pointer',
+                              opacity: hoveredIndex === null ? 1 : (isHovered ? 1 : 0.3)
+                            }}
+                          />
+                        );
+                      })}
+                    </Pie>
+                    
+                    {/* 自定义Tooltip */}
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload as ChartData;
+                          return (
+                            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-3">
+                              <p className="font-semibold mb-1 text-slate-800 dark:text-slate-200">{data.name}</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">数量：{data.value.toLocaleString()} 吨</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">均价：{data.avgPrice} 元/吨</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">占比：{data.percentage}</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              
+              {/* 右侧标签列 */}
+              <div className="absolute right-0 top-0 bottom-0 w-[200px] flex flex-col justify-center py-12">
+                {rightLabels.map((item, i) => {
+                  const total = rightLabels.length;
+                  const padding = 50;
+                  const availableHeight = 500 - padding * 2;
+                  const labelY = padding + (availableHeight / (total + 1)) * (i + 1);
+                  const isHovered = hoveredIndex === item.index;
+                  
+                  return (
+                    <div 
+                      key={item.name} 
+                      className={cn(
+                        "absolute right-2 flex items-center gap-2 text-sm cursor-pointer transition-all",
+                        isHovered ? "font-semibold scale-105" : ""
+                      )}
+                      style={{ top: labelY, transform: 'translateY(-50%)' }}
+                      onMouseEnter={() => setHoveredIndex(item.index)}
+                      onMouseLeave={() => setHoveredIndex(null)}
+                    >
+                      <span className="whitespace-nowrap">{item.name}: {item.percentage}</span>
+                      <span
+                        className="w-3 h-3 rounded-full transition-transform"
+                        style={{ 
+                          backgroundColor: COLORS[item.index % COLORS.length],
+                          transform: isHovered ? 'scale(1.3)' : 'scale(1)'
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
