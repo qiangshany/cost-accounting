@@ -253,7 +253,7 @@ export default function AdminPage() {
       }
 
       const firstRow = jsonData[0] as Record<string, unknown>;
-      const requiredFields = ['单据日期', '客户', '业务员', '物料名称', '销售计划数量', '含税净价', '价税合计', '出库数量'];
+      const requiredFields = ['单据日期', '客户', '业务员', '物料名称', '主数量', '主含税净价', '价税合计', '出库主数量'];
       const missingFields = requiredFields.filter(field => !(field in firstRow));
 
       if (missingFields.length > 0) {
@@ -265,10 +265,10 @@ export default function AdminPage() {
         客户: String(row['客户'] || ''),
         业务员: String(row['业务员'] || ''),
         物料名称: String(row['物料名称'] || ''),
-        销售计划数量: Number(row['销售计划数量']) || 0,
-        含税净价: Number(row['含税净价']) || 0,
+        销售计划数量: Number(row['主数量']) || 0,
+        含税净价: Number(row['主含税净价']) || 0,
         价税合计: Number(row['价税合计']) || 0,
-        出库数量: Number(row['出库数量']) || 0,
+        出库数量: Number(row['出库主数量']) || 0,
       }));
 
       // 保存到数据库
