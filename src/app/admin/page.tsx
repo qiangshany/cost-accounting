@@ -68,7 +68,9 @@ interface SummaryData {
   periodExpenses: Record<string, number>;
   adjustments: Record<string, number>;
   workshops: string[];
-  totalYield: number; // 总产量
+  totalYield: number; // 碱产量
+  totalCost: number; // 总成本
+  cost32Percent: number; // 32%烧碱对应的总成本
 }
 
 export default function AdminPage() {
@@ -1007,25 +1009,21 @@ function CostAnalysisView({
   }, [tableData]);
 
   // 计算单位成本和毛利润
+  // 吨成本 = 32%烧碱总成本 × 0.53 / (碱产量 / 0.32)
   const { unitCost, grossProfit } = useMemo(() => {
-    if (!costListData) {
+    if (!costListData || !costListData.cost32Percent || !costListData.totalYield) {
       return { unitCost: 0, grossProfit: 0 };
     }
 
-    // 从成本数据中获取原材料总成本、人工与维护总成本、期间费用、调整项
-    const materialCost = calculateSubtotal(costListData.materials.costs);
-    const laborCost = calculateSubtotal(costListData.laborAndMaintenance);
-    const periodCost = calculateSubtotal(costListData.periodExpenses);
-    const adjustmentCost = calculateSubtotal(costListData.adjustments);
+    // 32%烧碱对应的总成本
+    const cost32Percent = costListData.cost32Percent;
     
-    // 总成本 = 原材料成本 + 人工与维护成本 + 期间费用 - 调整项
-    const totalCost = materialCost + laborCost + periodCost - adjustmentCost;
-    
-    // 获取总产量
+    // 碱产量
     const totalYield = costListData.totalYield;
     
-    // 单位成本（元/吨）= 总成本 / 总产量
-    const cost = totalYield > 0 ? totalCost / totalYield : 0;
+    // 吨成本（元/吨）= cost32Percent × 0.53 / (碱产量 / 0.32)
+    // 即：吨成本 = 总成本 × 0.53 × 0.32 / 碱产量
+    const cost = totalYield > 0 ? (cost32Percent * 0.53 * 0.32) / totalYield : 0;
     
     // 毛利润 = 销售均价 - 单位成本
     const profit = avgPrice - cost;

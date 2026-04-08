@@ -218,7 +218,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 7. 计算总产量
+    // 7. 计算总产量（碱产量）
     let totalYield = 0;
     
     if (yieldResponse.data) {
@@ -229,6 +229,15 @@ export async function GET(request: NextRequest) {
         }
       }
     }
+
+    // 8. 计算32%烧碱对应的总成本
+    // 32%烧碱总成本 = (原材料成本 + 人工与维护成本 + 期间费用 - 调整项) × 0.53
+    const materialCost = Object.values(materialCosts).reduce((sum, val) => sum + val, 0);
+    const laborCost = Object.values(laborAndMaintenance).reduce((sum, val) => sum + val, 0);
+    const periodCost = Object.values(periodExpenses).reduce((sum, val) => sum + val, 0);
+    const adjustmentCost = Object.values(adjustments).reduce((sum, val) => sum + val, 0);
+    const totalCost = materialCost + laborCost + periodCost - adjustmentCost;
+    const cost32Percent = totalCost * 0.53;
 
     return NextResponse.json({
       success: true,
@@ -242,7 +251,9 @@ export async function GET(request: NextRequest) {
         periodExpenses,
         adjustments,
         workshops: Array.from(workshopSet),
-        totalYield
+        totalYield,
+        totalCost,
+        cost32Percent
       }
     });
   } catch (error) {
