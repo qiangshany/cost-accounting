@@ -1158,7 +1158,8 @@ function CostAnalysisView({
   // 吨成本 = 32%烧碱总成本 × 0.53 / (碱产量 / 0.32)
   const { unitCost, grossProfit } = useMemo(() => {
     if (!costListData || !costListData.cost32Percent || !costListData.totalYield) {
-      return { unitCost: 0, grossProfit: 0 };
+      // 如果没有成本数据，仍然计算毛利（成本为0时毛利=均价）
+      return { unitCost: 0, grossProfit: avgPrice };
     }
 
     // 32%烧碱对应的总成本
@@ -1438,23 +1439,12 @@ function CostAnalysisView({
                 <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
                   {selectedMaterial}：均价{' '}
                   <span className="text-xl font-bold text-blue-600 dark:text-blue-400">{avgPrice.toFixed(2)} 元/吨</span>
-                  {costListData && costListData.totalYield > 0 && (
-                    <>
-                      ，成本 <span className="text-xl font-bold text-orange-600 dark:text-orange-400">{unitCost.toFixed(2)} 元/吨</span>
-                      ，毛利润 <span className="text-xl font-bold text-green-600 dark:text-green-400">{grossProfit.toFixed(2)} 元/吨</span>
-                    </>
-                  )}
+                  ，成本 <span className="text-xl font-bold text-orange-600 dark:text-orange-400">{unitCost.toFixed(2)} 元/吨</span>
+                  ，毛利润 <span className={grossProfit >= 0 ? "text-xl font-bold text-green-600 dark:text-green-400" : "text-xl font-bold text-red-600 dark:text-red-400"}>{grossProfit.toFixed(2)} 元/吨</span>
                 </h3>
-                {costListData && costListData.totalYield > 0 && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                    高于此均价的客户 {aboveAvgData.count} 家，销售计划数量共计 {aboveAvgData.quantity.toFixed(2)} 吨，占比 {aboveAvgData.quantityRatio}%
-                  </p>
-                )}
-                {(!costListData || costListData.totalYield === 0) && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                    高于此均价的客户 {aboveAvgData.count} 家，销售计划数量共计 {aboveAvgData.quantity.toFixed(2)} 吨，占比 {aboveAvgData.quantityRatio}%
-                  </p>
-                )}
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  高于此均价的客户 {aboveAvgData.count} 家，销售计划数量共计 {aboveAvgData.quantity.toFixed(2)} 吨，占比 {aboveAvgData.quantityRatio}%
+                </p>
               </div>
 
               {/* 表格 */}
