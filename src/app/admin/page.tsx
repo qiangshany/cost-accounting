@@ -4,9 +4,6 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
@@ -275,45 +272,6 @@ export default function AdminPage() {
             </Button>
           </div>
         </div>
-
-        {/* 筛选条件区域 */}
-        <Card className="shadow-sm border-slate-200 dark:border-slate-800 py-4">
-          <CardContent className="pt-2">
-            <div className="grid gap-1.5 grid-cols-1 md:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor="product" className="text-sm font-medium text-slate-500 dark:text-slate-500">产品</Label>
-                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                  <SelectTrigger id="product" className="h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="氯碱">氯碱</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="date" className="text-sm font-medium text-slate-500 dark:text-slate-500">日期</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
-                />
-                {selectedDate && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    查看前一天的成本数据（{selectedDate} 查看 {(() => {
-                      const prevDate = new Date(selectedDate);
-                      prevDate.setDate(prevDate.getDate() - 1);
-                      return prevDate.toISOString().split('T')[0];
-                    })()}）
-                  </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* 视图切换按钮 */}
         <div className="flex gap-2">
