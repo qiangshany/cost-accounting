@@ -1,14 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
-import { Calculator, LogOut, TrendingUp, Calendar, Factory, Trash2, List, BarChart3, Upload, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { Calculator, LogOut, TrendingUp, Calendar as CalendarIcon, Factory, Trash2, List, BarChart3, Upload, FileSpreadsheet, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { format } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 // 原材料类成本项及单位
 const MATERIAL_ITEMS: { name: string; unit: string }[] = [
@@ -53,6 +59,25 @@ const PERIOD_EXPENSE_ITEMS: { name: string; unit: string }[] = [
 const ADJUSTMENT_ITEMS: { name: string; unit: string }[] = [
   { name: '调减其他收入', unit: '元' },
 ];
+
+// 销售数据颜色配置
+const SALES_COLORS = [
+  '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+  '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+  '#14b8a6', '#a855f7', '#eab308', '#22c55e', '#0ea5e9'
+];
+
+// 物料名称标准化映射
+const normalizeMaterialName = (name: string): string => {
+  if (!name) return name;
+  
+  // 32%工业级烧碱 和 食品级烧碱 合并为 32%烧碱
+  if (name.includes('32%工业级烧碱') || name.includes('食品级烧碱')) {
+    return '32%烧碱';
+  }
+  
+  return name;
+};
 
 interface SummaryData {
   materials: {
@@ -591,6 +616,16 @@ function CostAnalysisView({ totalCost, totalYield, selectedProduct }: { totalCos
   const [salesData, setSalesData] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined
+  });
+  const [isStartCalendarOpen, setIsStartCalendarOpen] = useState(false);
+  const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState<string>('32%烧碱');
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [sortKey, setSortKey] = useState<'quantity' | 'percentage' | 'avgPrice'>('quantity');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // 32%烧碱的吨成本计算
