@@ -778,11 +778,34 @@ function CostAnalysisView() {
       }
 
       // 6. 重新加载数据
-      const reloadResponse = await fetch('/api/sales-data?page=0&pageSize=1000');
-      const reloadResult = await reloadResponse.json();
-      if (reloadResult.success && reloadResult.data) {
-        setRawData(reloadResult.data as SalesData[]);
-      }
+      const loadAllData = async () => {
+        const pageSize = 1000;
+        let page = 0;
+        let allData: SalesData[] = [];
+        let hasMore = true;
+
+        while (hasMore) {
+          const params = new URLSearchParams();
+          params.append('page', page.toString());
+          params.append('pageSize', pageSize.toString());
+
+          const response = await fetch(`/api/sales-data?${params.toString()}`);
+          const result = await response.json();
+
+          if (result.success && result.data) {
+            allData = [...allData, ...result.data];
+            hasMore = result.hasMore || false;
+            page++;
+          } else {
+            hasMore = false;
+          }
+        }
+
+        return allData;
+      };
+
+      const allNewData = await loadAllData();
+      setRawData(allNewData);
 
       // 7. 自动设置默认日期（使用最晚日期）
       const dates = salesData.map(item => item.单据日期).filter(Boolean);
@@ -811,18 +834,16 @@ function CostAnalysisView() {
   const filteredData = useMemo(() => {
     if (!dateRange.from || !dateRange.to) return [];
 
-    const fromDate = new Date(dateRange.from);
-    fromDate.setHours(0, 0, 0, 0);
-    const toDate = new Date(dateRange.to);
-    toDate.setHours(23, 59, 59, 999);
+    // 使用ISO日期字符串进行比较，避免时区问题
+    const fromDateStr = new Date(dateRange.from).toISOString().split('T')[0];
+    const toDateStr = new Date(dateRange.to).toISOString().split('T')[0];
 
     return rawData.filter(item => {
       const itemDate = item.单据日期;
       if (!itemDate) return false;
 
-      const parsedDate = new Date(itemDate);
-      parsedDate.setHours(0, 0, 0, 0);
-      return parsedDate >= fromDate && parsedDate <= toDate;
+      // itemDate可能是 "2026-04-08" 格式
+      return itemDate >= fromDateStr && itemDate <= toDateStr;
     });
   }, [rawData, dateRange, selectedMaterial]);
 
