@@ -830,9 +830,9 @@ function CostAnalysisView({
   const filteredData = useMemo(() => {
     if (!dateRange.from || !dateRange.to) return [];
 
-    // 使用ISO日期字符串进行比较，避免时区问题
-    const fromDateStr = new Date(dateRange.from).toISOString().split('T')[0];
-    const toDateStr = new Date(dateRange.to).toISOString().split('T')[0];
+    // 使用本地日期字符串进行比较，避免时区问题
+    const fromDateStr = format(dateRange.from, 'yyyy-MM-dd');
+    const toDateStr = format(dateRange.to, 'yyyy-MM-dd');
 
     return rawData.filter(item => {
       const itemDate = item.单据日期;
