@@ -7,7 +7,22 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const product = searchParams.get('product') || '32%液碱';
+    let product = searchParams.get('product') || '32%液碱';
+
+    // 产品名称映射：前端选择的物料名称映射到数据库中的产品名称
+    // 32%烧碱、32%液碱、氯碱 统一映射到数据库中的 "氯碱"
+    const productMapping: Record<string, string> = {
+      '32%烧碱': '氯碱',
+      '32%液碱': '氯碱',
+      '氯碱': '氯碱',
+      '31%盐酸': '氯碱', // 盐酸也是氯碱产品
+      '31%食品级烧碱': '氯碱',
+      '32%食品级烧碱': '氯碱',
+      '32%工业级烧碱': '氯碱',
+    };
+    
+    // 映射产品名称
+    product = productMapping[product] || '氯碱';
 
     if (!startDate || !endDate) {
       return NextResponse.json({
