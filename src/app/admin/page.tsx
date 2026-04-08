@@ -298,30 +298,6 @@ export default function AdminPage() {
           </Card>
         ) : (
           <>
-            {/* 数据来源统计 */}
-            <Card className="shadow-sm border-slate-200 dark:border-slate-800">
-              <CardHeader className="bg-emerald-50 dark:bg-emerald-950/30 border-b border-emerald-100 dark:border-emerald-900/30 py-4">
-                <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                  <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
-                    <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  数据来源
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="flex flex-wrap gap-3">
-                  {summaryData.workshops.map((workshop) => (
-                    <div key={workshop} className="px-4 py-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <div className="flex items-center gap-2">
-                        <Factory className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{workshop}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
             {/* 原材料类成本汇总 */}
             <Card className="shadow-sm border-slate-200 dark:border-slate-800">
               <CardHeader className="bg-sky-50 dark:bg-sky-950/30 border-b border-sky-100 dark:border-sky-900/30 py-4">
