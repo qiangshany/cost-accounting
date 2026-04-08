@@ -95,6 +95,8 @@ export default function AdminPage() {
     adjustments: {},
     workshops: [],
     totalYield: 0,
+    totalCost: 0,
+    cost32Percent: 0,
   });
   
   // 销售数据状态（供成本分析视图使用）
@@ -153,6 +155,8 @@ export default function AdminPage() {
           adjustments: {},
           workshops: [],
           totalYield: 0,
+          totalCost: 0,
+          cost32Percent: 0,
         });
       }
     } catch (error) {
@@ -164,6 +168,8 @@ export default function AdminPage() {
         adjustments: {},
         workshops: [],
         totalYield: 0,
+        totalCost: 0,
+        cost32Percent: 0,
       });
     } finally {
       setIsLoading(false);
