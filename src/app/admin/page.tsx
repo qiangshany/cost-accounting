@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Calculator, LogOut, TrendingUp, Calendar, Factory, Trash2 } from 'lucide-react';
+import { Calculator, LogOut, TrendingUp, Calendar, Factory, Trash2, List, BarChart3 } from 'lucide-react';
 
 // 原材料类成本项及单位
 const MATERIAL_ITEMS: { name: string; unit: string }[] = [
@@ -70,6 +70,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<string>('氯碱');
+  const [view, setView] = useState<'list' | 'analysis'>('list');
   const [summaryData, setSummaryData] = useState<SummaryData>({
     materials: { quantities: {}, costs: {}, prices: {} },
     laborAndMaintenance: {},
@@ -285,6 +286,26 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
+        {/* 视图切换按钮 */}
+        <div className="flex gap-2">
+          <Button
+            variant={view === 'list' ? 'default' : 'outline'}
+            onClick={() => setView('list')}
+            className={view === 'list' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+          >
+            <List className="w-4 h-4 mr-2" />
+            成本列表
+          </Button>
+          <Button
+            variant={view === 'analysis' ? 'default' : 'outline'}
+            onClick={() => setView('analysis')}
+            className={view === 'analysis' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+          >
+            <BarChart3 className="w-4 h-4 mr-2" />
+            成本分析
+          </Button>
+        </div>
+
         {isLoading ? (
           <Card className="shadow-sm border-slate-200 dark:border-slate-800">
             <CardContent className="py-12">
@@ -298,6 +319,8 @@ export default function AdminPage() {
           </Card>
         ) : (
           <>
+            {view === 'list' && (
+              <>
             {/* 原材料类成本汇总 */}
             <Card className="shadow-sm border-slate-200 dark:border-slate-800">
               <CardHeader className="bg-sky-50 dark:bg-sky-950/30 border-b border-sky-100 dark:border-sky-900/30 py-4">
@@ -522,8 +545,85 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </>
+            )}
+          </>
+        )}
+
+        {view === 'analysis' && (
+          <CostAnalysisView
+            totalCost={calculateSubtotal(summaryData.materials.costs) +
+              calculateSubtotal(summaryData.laborAndMaintenance) +
+              calculateSubtotal(summaryData.periodExpenses) -
+              calculateSubtotal(summaryData.adjustments)}
+            alkaliYield={summaryData.materials.quantities['碱产量'] || 0}
+            selectedProduct={selectedProduct}
+          />
         )}
       </div>
+    </div>
+  );
+}
+
+// 成本分析视图组件
+function CostAnalysisView({ totalCost, alkaliYield, selectedProduct }: { totalCost: number; alkaliYield: number; selectedProduct: string }) {
+  // 32%烧碱的吨成本计算
+  // 公式：总成本 * 0.53 / (碱产量/0.32)
+  const alkaliCostPerTon = alkaliYield > 0 ? (totalCost * 0.53) / (alkaliYield / 0.32) : 0;
+
+  return (
+    <div className="space-y-6">
+      <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-blue-950/30 dark:via-slate-900 dark:to-indigo-950/30">
+        <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
+          <CardTitle className="text-xl text-center text-slate-800 dark:text-slate-200">
+            32%烧碱成本分析
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">总成本</div>
+                <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">
+                  ¥{totalCost.toFixed(2)}
+                </div>
+              </div>
+              <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">碱产量</div>
+                <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">
+                  {alkaliYield.toFixed(2)} 吨
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 text-white rounded-xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-blue-100 text-sm mb-1">32%烧碱吨成本</div>
+                  <div className="text-4xl font-bold">
+                    ¥{alkaliCostPerTon.toFixed(2)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-blue-100 text-sm mb-1">计算公式</div>
+                  <div className="text-sm opacity-80">
+                    总成本 × 0.53 ÷ (碱产量 ÷ 0.32)
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-3">计算说明</h3>
+              <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                <div>• <strong>成本系数：</strong>0.53（32%烧碱在总成本中的占比）</div>
+                <div>• <strong>碱产量：</strong>{alkaliYield.toFixed(2)} 吨</div>
+                <div>• <strong>浓度：</strong>32%</div>
+                <div>• <strong>计算公式：</strong>¥{totalCost.toFixed(2)} × 0.53 ÷ ({alkaliYield.toFixed(2)} ÷ 0.32) = ¥{alkaliCostPerTon.toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
