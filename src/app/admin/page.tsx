@@ -803,6 +803,7 @@ export default function AdminPage() {
             salesData={salesData}
             dateRange={dateRange}
             selectedMaterial={selectedMaterial}
+            costListData={costListData}
           />
         )}
       </div>
@@ -815,12 +816,14 @@ interface CostAnalysisViewProps {
   salesData: SalesData[];
   dateRange: { from: Date | undefined; to: Date | undefined };
   selectedMaterial: string;
+  costListData?: SummaryData;
 }
 
 function CostAnalysisView({ 
   salesData, 
   dateRange, 
-  selectedMaterial
+  selectedMaterial,
+  costListData
 }: CostAnalysisViewProps) {
   
   // 物料名称标准化
@@ -841,6 +844,11 @@ function CostAnalysisView({
   
   // 使用标准化后的数据
   const rawData = normalizedSalesData;
+
+  // 计算小计函数
+  const calculateSubtotal = (obj: Record<string, number>) => {
+    return Object.values(obj).reduce((sum, val) => sum + (val || 0), 0);
+  };
 
   // 悬浮状态
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -997,6 +1005,33 @@ function CostAnalysisView({
 
     return totalPrice / totalQuantity;
   }, [tableData]);
+
+  // 计算单位成本和毛利润
+  const { unitCost, grossProfit } = useMemo(() => {
+    if (!costListData) {
+      return { unitCost: 0, grossProfit: 0 };
+    }
+
+    // 从成本数据中获取原材料总成本、人工与维护总成本、期间费用、调整项
+    const materialCost = calculateSubtotal(costListData.materials.costs);
+    const laborCost = calculateSubtotal(costListData.laborAndMaintenance);
+    const periodCost = calculateSubtotal(costListData.periodExpenses);
+    const adjustmentCost = calculateSubtotal(costListData.adjustments);
+    
+    // 总成本 = 原材料成本 + 人工与维护成本 + 期间费用 - 调整项
+    const totalCost = materialCost + laborCost + periodCost - adjustmentCost;
+    
+    // 获取总产量
+    const totalYield = costListData.totalYield;
+    
+    // 单位成本（元/吨）= 总成本 / 总产量
+    const cost = totalYield > 0 ? totalCost / totalYield : 0;
+    
+    // 毛利润 = 销售均价 - 单位成本
+    const profit = avgPrice - cost;
+    
+    return { unitCost: cost, grossProfit: profit };
+  }, [costListData, avgPrice]);
 
   // 计算高于均价的客户数据
   const aboveAvgData = useMemo(() => {
@@ -1259,10 +1294,23 @@ function CostAnalysisView({
                 <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
                   {selectedMaterial}：均价{' '}
                   <span className="text-xl font-bold text-blue-600 dark:text-blue-400">{avgPrice.toFixed(2)} 元/吨</span>
-                  ，高于此均价的客户 {aboveAvgData.count} 家，
-                  销售计划数量共计 {aboveAvgData.quantity.toFixed(2)} 吨，
-                  占比 {aboveAvgData.quantityRatio}%
+                  {costListData && costListData.totalYield > 0 && (
+                    <>
+                      ，成本 <span className="text-xl font-bold text-orange-600 dark:text-orange-400">{unitCost.toFixed(2)} 元/吨</span>
+                      ，毛利润 <span className="text-xl font-bold text-green-600 dark:text-green-400">{grossProfit.toFixed(2)} 元/吨</span>
+                    </>
+                  )}
                 </h3>
+                {costListData && costListData.totalYield > 0 && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    高于此均价的客户 {aboveAvgData.count} 家，销售计划数量共计 {aboveAvgData.quantity.toFixed(2)} 吨，占比 {aboveAvgData.quantityRatio}%
+                  </p>
+                )}
+                {(!costListData || costListData.totalYield === 0) && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    高于此均价的客户 {aboveAvgData.count} 家，销售计划数量共计 {aboveAvgData.quantity.toFixed(2)} 吨，占比 {aboveAvgData.quantityRatio}%
+                  </p>
+                )}
               </div>
 
               {/* 表格 */}

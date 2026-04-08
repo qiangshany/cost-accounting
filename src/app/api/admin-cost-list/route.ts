@@ -223,10 +223,9 @@ export async function GET(request: NextRequest) {
     
     if (yieldResponse.data) {
       for (const item of yieldResponse.data) {
-        if (product === '32%液碱') {
+        // 氯碱/32%烧碱产品使用碱产量
+        if (product === '氯碱') {
           totalYield += parseFloat(item.alkali_yield) || 0;
-        } else if (product === '31%盐酸') {
-          totalYield += parseFloat(item.hydrochloric_acid_yield) || 0;
         }
       }
     }
