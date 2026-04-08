@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
-import { Calculator, LogOut, TrendingUp, Calendar as CalendarIcon, Factory, Trash2, List, BarChart3, Upload } from 'lucide-react';
+import { Calculator, LogOut, TrendingUp, Calendar as CalendarIcon, Factory, Trash2, List, BarChart3, Upload, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -812,6 +812,74 @@ function CostAnalysisView() {
     return { leftLabels: left, rightLabels: right, sectorsWithAngle: sectors };
   }, [chartData]);
 
+  // 排序状态
+  const [sortKey, setSortKey] = useState<'value' | 'percentage' | 'avgPrice'>('value');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // 计算整体均价
+  const avgPrice = useMemo(() => {
+    if (tableData.length === 0) return 0;
+
+    const totalQuantity = tableData.reduce((sum, item) => sum + item.value, 0);
+    if (totalQuantity === 0) return 0;
+
+    // 重新计算价税合计总和
+    const totalPrice = tableData.reduce((sum, item) => {
+      return sum + (item.value * parseFloat(item.avgPrice));
+    }, 0);
+
+    return totalPrice / totalQuantity;
+  }, [tableData]);
+
+  // 计算高于均价的客户数据
+  const aboveAvgData = useMemo(() => {
+    if (tableData.length === 0) {
+      return { count: 0, quantity: 0, quantityRatio: '0.00' };
+    }
+
+    const aboveAvgCustomers = tableData.filter(item => parseFloat(item.avgPrice) > avgPrice);
+    const count = aboveAvgCustomers.length;
+
+    // 计算高于均价客户的销售计划数量和占比
+    const totalQuantity = tableData.reduce((sum, item) => sum + item.value, 0);
+    const aboveAvgQuantity = aboveAvgCustomers.reduce((sum, item) => sum + item.value, 0);
+    const quantityRatio = totalQuantity > 0 ? ((aboveAvgQuantity / totalQuantity) * 100).toFixed(2) : '0.00';
+
+    return { count, quantity: aboveAvgQuantity, quantityRatio };
+  }, [tableData, avgPrice]);
+
+  // 排序后的数据
+  const sortedTableData = useMemo(() => {
+    const dataWithIndex = tableData.map((item, index) => ({ ...item, originalIndex: index }));
+    
+    return dataWithIndex.sort((a, b) => {
+      let aVal: number, bVal: number;
+      
+      if (sortKey === 'value') {
+        aVal = a.value;
+        bVal = b.value;
+      } else if (sortKey === 'percentage') {
+        aVal = parseFloat(a.percentage);
+        bVal = parseFloat(b.percentage);
+      } else {
+        aVal = parseFloat(a.avgPrice);
+        bVal = parseFloat(b.avgPrice);
+      }
+      
+      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+  }, [tableData, sortKey, sortOrder]);
+
+  // 排序处理函数
+  const handleSort = (key: 'value' | 'percentage' | 'avgPrice') => {
+    if (sortKey === key) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortOrder('desc');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* 第一部分：Excel导入和筛选框 */}
@@ -1163,45 +1231,135 @@ function CostAnalysisView() {
       <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
         <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
           <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
-            销售明细表
+            客户销售分析表
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          {finalFilteredData.length === 0 ? (
+          {tableData.length === 0 ? (
             <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-              {rawData.length === 0 ? '请先导入Excel文件' : '暂无符合条件的数据'}
+              {!selectedMaterial ? '请选择物料后查看分析表' : '暂无数据'}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="text-left py-3 px-4 text-slate-700 dark:text-slate-300 font-semibold">单据日期</th>
-                    <th className="text-left py-3 px-4 text-slate-700 dark:text-slate-300 font-semibold">客户</th>
-                    <th className="text-left py-3 px-4 text-slate-700 dark:text-slate-300 font-semibold">业务员</th>
-                    <th className="text-left py-3 px-4 text-slate-700 dark:text-slate-300 font-semibold">物料名称</th>
-                    <th className="text-right py-3 px-4 text-slate-700 dark:text-slate-300 font-semibold">销售计划数量</th>
-                    <th className="text-right py-3 px-4 text-slate-700 dark:text-slate-300 font-semibold">含税净价</th>
-                    <th className="text-right py-3 px-4 text-slate-700 dark:text-slate-300 font-semibold">价税合计</th>
-                    <th className="text-right py-3 px-4 text-slate-700 dark:text-slate-300 font-semibold">出库数量</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {finalFilteredData.map((item, index) => (
-                    <tr key={index} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800">
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400">{item.单据日期}</td>
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400">{item.客户}</td>
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400">{item.业务员}</td>
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400">{item.物料名称}</td>
-                      <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-400">{item.销售计划数量.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-400">¥{item.含税净价.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-400">¥{item.价税合计.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-400">{item.出库数量.toFixed(2)}</td>
+            <>
+              {/* 统计文字 */}
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                  {selectedMaterial}：均价{' '}
+                  <span className="text-xl font-bold text-blue-600 dark:text-blue-400">{avgPrice.toFixed(2)} 元/吨</span>
+                  ，高于此均价的客户 {aboveAvgData.count} 家，
+                  销售计划数量共计 {aboveAvgData.quantity.toFixed(2)} 吨，
+                  占比 {aboveAvgData.quantityRatio}%
+                </h3>
+              </div>
+
+              {/* 表格 */}
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-100 dark:bg-slate-800">
+                    <tr>
+                      <th className="px-4 py-3 text-center font-medium w-16 text-slate-700 dark:text-slate-300">序号</th>
+                      <th className="px-4 py-3 text-left font-medium text-slate-700 dark:text-slate-300">客户名称</th>
+                      
+                      {/* 可排序列：销售计划数量 */}
+                      <th 
+                        className="px-4 py-3 text-right font-medium cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                        onClick={() => handleSort('value')}
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          <span>销售计划数量(吨)</span>
+                          {sortKey === 'value' ? (
+                            sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                          ) : (
+                            <ArrowUpDown className="w-4 h-4 opacity-50" />
+                          )}
+                        </div>
+                      </th>
+                      
+                      {/* 可排序列：占比 */}
+                      <th 
+                        className="px-4 py-3 text-right font-medium cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                        onClick={() => handleSort('percentage')}
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          <span>销售计划数量占比</span>
+                          {sortKey === 'percentage' ? (
+                            sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                          ) : (
+                            <ArrowUpDown className="w-4 h-4 opacity-50" />
+                          )}
+                        </div>
+                      </th>
+                      
+                      {/* 可排序列：客户单价 */}
+                      <th
+                        className="px-4 py-3 text-right font-medium cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                        onClick={() => handleSort('avgPrice')}
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          <span>客户单价(元/吨)</span>
+                          {sortKey === 'avgPrice' ? (
+                            sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                          ) : (
+                            <ArrowUpDown className="w-4 h-4 opacity-50" />
+                          )}
+                        </div>
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {sortedTableData.map((item, index) => {
+                      const itemAvgPrice = parseFloat(item.avgPrice);
+                      const isAboveAvg = itemAvgPrice > avgPrice;
+                      
+                      return (
+                        <tr key={item.name} className="hover:bg-slate-50 dark:hover:bg-slate-800">
+                          <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400">
+                            {index + 1}
+                          </td>
+                          <td className="px-4 py-3 flex items-center gap-2">
+                            <span
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: COLORS[item.originalIndex % COLORS.length] }}
+                            />
+                            <span className="text-slate-600 dark:text-slate-400">{item.name}</span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-400">
+                            {item.value.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-400">
+                            {item.percentage}
+                          </td>
+                          <td 
+                            className={cn(
+                              "px-4 py-3 text-right font-medium",
+                              isAboveAvg
+                                ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                                : "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400"
+                            )}
+                          >
+                            {item.avgPrice}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  
+                  {/* 表尾合计 */}
+                  <tfoot className="bg-slate-50 dark:bg-slate-800 font-medium">
+                    <tr>
+                      <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400">-</td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-300">合计</td>
+                      <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">
+                        {tableData.reduce((sum, item) => sum + item.value, 0).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">100%</td>
+                      <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">{avgPrice.toFixed(2)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
