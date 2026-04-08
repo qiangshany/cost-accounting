@@ -14,6 +14,18 @@ import { zhCN } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { cn } from '@/lib/utils';
 
+// 销售数据接口
+interface SalesData {
+  单据日期: string;
+  客户: string;
+  业务员: string;
+  物料名称: string;
+  销售计划数量: number;
+  含税净价: number;
+  价税合计: number;
+  出库数量: number;
+}
+
 // 原材料类成本项及单位
 const MATERIAL_ITEMS: { name: string; unit: string }[] = [
   { name: '原煤', unit: '吨' },
@@ -116,18 +128,6 @@ export default function AdminPage() {
   const [selectedMaterial, setSelectedMaterial] = useState<string>('32%烧碱');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // 销售数据接口
-  interface SalesData {
-    单据日期: string;
-    客户: string;
-    业务员: string;
-    物料名称: string;
-    销售计划数量: number;
-    含税净价: number;
-    价税合计: number;
-    出库数量: number;
-  }
   
   // 加载成本列表数据
   // 规则：
@@ -393,7 +393,7 @@ export default function AdminPage() {
       const workbook = XLSX.read(data);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
 
       // 验证数据结构
       if (!Array.isArray(jsonData) || jsonData.length === 0) {

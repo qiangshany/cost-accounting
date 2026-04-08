@@ -9,7 +9,7 @@ export const healthCheck = pgTable("health_check", {
 });
 
 export const costReports = pgTable("cost_reports", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	product: varchar({ length: 50 }).notNull(),
 	reportDate: date("report_date").notNull(),
 	workshop: varchar({ length: 50 }).notNull(),
@@ -28,7 +28,7 @@ export const costReports = pgTable("cost_reports", {
 ]);
 
 export const laborMaintenanceCosts = pgTable("labor_maintenance_costs", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	reportDate: date("report_date").notNull(),
 	costItemName: varchar("cost_item_name", { length: 100 }).notNull(),
 	product: varchar({ length: 50 }).notNull(),
@@ -43,7 +43,7 @@ export const laborMaintenanceCosts = pgTable("labor_maintenance_costs", {
 ]);
 
 export const adjustments = pgTable("adjustments", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	reportDate: date("report_date").notNull(),
 	adjustmentName: varchar("adjustment_name", { length: 100 }).notNull(),
 	product: varchar({ length: 50 }).notNull(),
@@ -57,7 +57,7 @@ export const adjustments = pgTable("adjustments", {
 ]);
 
 export const materialCosts = pgTable("material_costs", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	reportDate: date("report_date").notNull(),
 	materialName: varchar("material_name", { length: 100 }).notNull(),
 	product: varchar({ length: 50 }).notNull(),
@@ -73,7 +73,7 @@ export const materialCosts = pgTable("material_costs", {
 ]);
 
 export const periodExpenses = pgTable("period_expenses", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	reportDate: date("report_date").notNull(),
 	expenseItemName: varchar("expense_item_name", { length: 100 }).notNull(),
 	product: varchar({ length: 50 }).notNull(),
@@ -87,7 +87,7 @@ export const periodExpenses = pgTable("period_expenses", {
 ]);
 
 export const purchasePrices = pgTable("purchase_prices", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	reportDate: date("report_date").notNull(),
 	materialName: varchar("material_name", { length: 100 }).notNull(),
 	price: numeric({ precision: 20, scale:  10 }).notNull(),
@@ -101,7 +101,7 @@ export const purchasePrices = pgTable("purchase_prices", {
 ]);
 
 export const productionYields = pgTable("production_yields", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	reportDate: date("report_date").notNull(),
 	product: varchar({ length: 50 }).notNull(),
 	workshop: varchar({ length: 50 }).notNull(),
