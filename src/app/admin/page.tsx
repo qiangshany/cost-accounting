@@ -607,13 +607,14 @@ function CostAnalysisView() {
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState({ loaded: 0, total: 0 });
+  const today = new Date();
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: undefined,
-    to: undefined
+    from: today,
+    to: today
   });
   const [isStartCalendarOpen, setIsStartCalendarOpen] = useState(false);
   const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false);
-  const [selectedMaterial, setSelectedMaterial] = useState<string>('');
+  const [selectedMaterial, setSelectedMaterial] = useState<string>('32%烧碱');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // 颜色配置
@@ -1079,129 +1080,104 @@ function CostAnalysisView() {
               </p>
             </div>
 
-            {/* 日期区间筛选 */}
-            <div>
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                日期区间筛选
-              </Label>
-              <div className="flex gap-2">
-                {/* 起始日期 */}
-                <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="flex-1 justify-start text-left">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange.from ? format(dateRange.from, 'yyyy-MM-dd', { locale: zhCN }) : "起始日期"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateRange.from}
-                      onSelect={(date) => {
-                        if (date) {
-                          const newRange = { ...dateRange, from: date };
-                          if (!dateRange.to || dateRange.to < date) {
-                            newRange.to = date;
+            {/* 日期区间筛选和物料筛选 */}
+            <div className="flex gap-4">
+              {/* 日期区间筛选 */}
+              <div className="flex-1">
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                  日期区间筛选
+                </Label>
+                <div className="flex gap-2">
+                  {/* 起始日期 */}
+                  <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-32 justify-start text-left">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateRange.from ? format(dateRange.from, 'yyyy-MM-dd', { locale: zhCN }) : "起始日期"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dateRange.from}
+                        onSelect={(date) => {
+                          if (date) {
+                            const newRange = { ...dateRange, from: date };
+                            if (!dateRange.to || dateRange.to < date) {
+                              newRange.to = date;
+                            }
+                            setDateRange(newRange);
+                            setIsStartCalendarOpen(false);
                           }
-                          setDateRange(newRange);
-                          setIsStartCalendarOpen(false);
-                        }
-                      }}
-                      locale={zhCN}
-                    />
-                  </PopoverContent>
-                </Popover>
+                        }}
+                        locale={zhCN}
+                      />
+                    </PopoverContent>
+                  </Popover>
 
-                {/* 结束日期 */}
-                <Popover open={isEndCalendarOpen} onOpenChange={setIsEndCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="flex-1 justify-start text-left">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange.to ? format(dateRange.to, 'yyyy-MM-dd', { locale: zhCN }) : "结束日期"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateRange.to}
-                      onSelect={(date) => {
-                        if (date) {
-                          const newRange = { ...dateRange, to: date };
-                          if (!dateRange.from || dateRange.from > date) {
-                            newRange.from = date;
+                  {/* 结束日期 */}
+                  <Popover open={isEndCalendarOpen} onOpenChange={setIsEndCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-32 justify-start text-left">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateRange.to ? format(dateRange.to, 'yyyy-MM-dd', { locale: zhCN }) : "结束日期"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dateRange.to}
+                        onSelect={(date) => {
+                          if (date) {
+                            const newRange = { ...dateRange, to: date };
+                            if (!dateRange.from || dateRange.from > date) {
+                              newRange.from = date;
+                            }
+                            setDateRange(newRange);
+                            setIsEndCalendarOpen(false);
                           }
-                          setDateRange(newRange);
-                          setIsEndCalendarOpen(false);
-                        }
-                      }}
-                      locale={zhCN}
-                    />
-                  </PopoverContent>
-                </Popover>
+                        }}
+                        locale={zhCN}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
-            </div>
 
-            {/* 物料筛选 */}
-            <div>
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                物料筛选
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={!selectedMaterial ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedMaterial('')}
-                  className={!selectedMaterial 
-                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                    : "bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
-                  }
-                >
-                  全部
-                </Button>
-                {uniqueMaterials.map(material => (
+              {/* 物料筛选 */}
+              <div className="flex-1">
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                  物料筛选
+                </Label>
+                <div className="flex flex-wrap gap-2">
                   <Button
-                    key={material}
-                    variant={selectedMaterial === material ? "default" : "outline"}
+                    variant={!selectedMaterial ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setSelectedMaterial(material)}
-                    className={selectedMaterial === material 
-                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                    onClick={() => setSelectedMaterial('')}
+                    className={!selectedMaterial
+                      ? "bg-blue-600 hover:bg-blue-700 text-white"
                       : "bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
                     }
                   >
-                    {material}
+                    全部
                   </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* 数据统计 */}
-            {rawData.length > 0 && (
-              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <div className="text-slate-500 dark:text-slate-400">总记录数</div>
-                    <div className="text-lg font-semibold text-slate-800 dark:text-slate-200">{rawData.length}</div>
-                  </div>
-                  <div>
-                    <div className="text-slate-500 dark:text-slate-400">筛选后记录</div>
-                    <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">{finalFilteredData.length}</div>
-                  </div>
-                  <div>
-                    <div className="text-slate-500 dark:text-slate-400">总出库数量</div>
-                    <div className="text-lg font-semibold text-slate-800 dark:text-slate-200">
-                      {finalFilteredData.reduce((sum, item) => sum + item.出库数量, 0).toFixed(2)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-slate-500 dark:text-slate-400">价税合计</div>
-                    <div className="text-lg font-semibold text-slate-800 dark:text-slate-200">
-                      ¥{finalFilteredData.reduce((sum, item) => sum + item.价税合计, 0).toFixed(2)}
-                    </div>
-                  </div>
+                  {uniqueMaterials.map(material => (
+                    <Button
+                      key={material}
+                      variant={selectedMaterial === material ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedMaterial(material)}
+                      className={selectedMaterial === material
+                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                        : "bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
+                      }
+                    >
+                      {material}
+                    </Button>
+                  ))}
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </CardContent>
       </Card>
