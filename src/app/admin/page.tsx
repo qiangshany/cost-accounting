@@ -146,17 +146,17 @@ export default function AdminPage() {
     const queryToDate = new Date(dateRange.to);
     queryToDate.setHours(0, 0, 0, 0);
     
-    // 如果结束日期是今天，查询范围改为开始日期到昨天
+    // 如果结束日期包含今天，查询范围改为开始日期到昨天
     let queryFromDate: Date;
     let queryEndDate: Date;
     
-    if (queryToDate.getTime() === today.getTime()) {
-      // 结束日期是今天，使用开始日期到昨天的范围
+    if (queryToDate.getTime() >= today.getTime()) {
+      // 结束日期包含今天，使用开始日期到昨天的范围
       queryFromDate = new Date(dateRange.from);
       queryEndDate = new Date(today);
       queryEndDate.setDate(queryEndDate.getDate() - 1);
     } else {
-      // 结束日期不是今天，使用原始日期范围
+      // 结束日期不包含今天，使用原始日期范围
       queryFromDate = new Date(dateRange.from);
       queryEndDate = new Date(dateRange.to);
     }
@@ -245,8 +245,8 @@ export default function AdminPage() {
     let queryEndDate = new Date(dateRange.to);
     queryEndDate.setDate(queryEndDate.getDate() - 1);
     
-    // 如果结束日期是今天，成本结束日期改为昨天（因为今天的成本出不来）
-    if (salesToDate.getTime() === today.getTime()) {
+    // 如果结束日期包含今天，成本结束日期改为昨天
+    if (salesToDate.getTime() >= today.getTime()) {
       queryEndDate = new Date(today);
       queryEndDate.setDate(queryEndDate.getDate() - 1);
     }
