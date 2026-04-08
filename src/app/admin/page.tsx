@@ -64,6 +64,7 @@ interface SummaryData {
   periodExpenses: Record<string, number>;
   adjustments: Record<string, number>;
   workshops: string[];
+  totalYield: number; // 总产量
 }
 
 export default function AdminPage() {
@@ -77,6 +78,7 @@ export default function AdminPage() {
     periodExpenses: {},
     adjustments: {},
     workshops: [],
+    totalYield: 0,
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -112,6 +114,7 @@ export default function AdminPage() {
         periodExpenses: {},
         adjustments: {},
         workshops: [],
+        totalYield: 0,
       });
       try {
         const response = await fetch(
@@ -126,6 +129,7 @@ export default function AdminPage() {
             periodExpenses: {},
             adjustments: {},
             workshops: [],
+            totalYield: 0,
           });
           setIsLoading(false);
           return;
@@ -140,6 +144,7 @@ export default function AdminPage() {
             periodExpenses: {},
             adjustments: {},
             workshops: [],
+            totalYield: 0,
           });
           setIsLoading(false);
           return;
@@ -156,6 +161,7 @@ export default function AdminPage() {
             periodExpenses: {},
             adjustments: {},
             workshops: [],
+            totalYield: 0,
           });
         }
       } catch (error) {
@@ -166,6 +172,7 @@ export default function AdminPage() {
           periodExpenses: {},
           adjustments: {},
           workshops: [],
+          totalYield: 0,
         });
       } finally {
         setIsLoading(false);
@@ -555,7 +562,7 @@ export default function AdminPage() {
               calculateSubtotal(summaryData.laborAndMaintenance) +
               calculateSubtotal(summaryData.periodExpenses) -
               calculateSubtotal(summaryData.adjustments)}
-            alkaliYield={summaryData.materials.quantities['碱产量'] || 0}
+            totalYield={summaryData.totalYield || 0}
             selectedProduct={selectedProduct}
           />
         )}
@@ -565,10 +572,10 @@ export default function AdminPage() {
 }
 
 // 成本分析视图组件
-function CostAnalysisView({ totalCost, alkaliYield, selectedProduct }: { totalCost: number; alkaliYield: number; selectedProduct: string }) {
+function CostAnalysisView({ totalCost, totalYield, selectedProduct }: { totalCost: number; totalYield: number; selectedProduct: string }) {
   // 32%烧碱的吨成本计算
   // 公式：总成本 * 0.53 / (碱产量/0.32)
-  const alkaliCostPerTon = alkaliYield > 0 ? (totalCost * 0.53) / (alkaliYield / 0.32) : 0;
+  const alkaliCostPerTon = totalYield > 0 ? (totalCost * 0.53) / (totalYield / 0.32) : 0;
 
   return (
     <div className="space-y-6">
@@ -590,7 +597,7 @@ function CostAnalysisView({ totalCost, alkaliYield, selectedProduct }: { totalCo
               <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                 <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">碱产量</div>
                 <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">
-                  {alkaliYield.toFixed(2)} 吨
+                  {totalYield.toFixed(2)} 吨
                 </div>
               </div>
             </div>
@@ -616,9 +623,9 @@ function CostAnalysisView({ totalCost, alkaliYield, selectedProduct }: { totalCo
               <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-3">计算说明</h3>
               <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
                 <div>• <strong>成本系数：</strong>0.53（32%烧碱在总成本中的占比）</div>
-                <div>• <strong>碱产量：</strong>{alkaliYield.toFixed(2)} 吨</div>
+                <div>• <strong>碱产量：</strong>{totalYield.toFixed(2)} 吨</div>
                 <div>• <strong>浓度：</strong>32%</div>
-                <div>• <strong>计算公式：</strong>¥{totalCost.toFixed(2)} × 0.53 ÷ ({alkaliYield.toFixed(2)} ÷ 0.32) = ¥{alkaliCostPerTon.toFixed(2)}</div>
+                <div>• <strong>计算公式：</strong>¥{totalCost.toFixed(2)} × 0.53 ÷ ({totalYield.toFixed(2)} ÷ 0.32) = ¥{alkaliCostPerTon.toFixed(2)}</div>
               </div>
             </div>
           </div>

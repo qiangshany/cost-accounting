@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const client = getSupabaseClient();
 
     // 并行查询所有数据
-    const [materialsResponse, purchasePricesResponse, laborResponse, periodResponse, adjustmentsResponse] =
+    const [materialsResponse, purchasePricesResponse, laborResponse, periodResponse, adjustmentsResponse, yieldsResponse] =
       await Promise.all([
         client
           .from('material_costs')
@@ -43,6 +43,11 @@ export async function GET(request: NextRequest) {
           .select('*')
           .eq('report_date', date)
           .eq('product', product),
+        client
+          .from('production_yields')
+          .select('*')
+          .eq('report_date', date)
+          .eq('product', product),
       ]);
 
     if (materialsResponse.error) throw new Error(`查询原材料失败: ${materialsResponse.error.message}`);
@@ -50,6 +55,7 @@ export async function GET(request: NextRequest) {
     if (laborResponse.error) throw new Error(`查询人工维护失败: ${laborResponse.error.message}`);
     if (periodResponse.error) throw new Error(`查询期间费用失败: ${periodResponse.error.message}`);
     if (adjustmentsResponse.error) throw new Error(`查询调整项失败: ${adjustmentsResponse.error.message}`);
+    if (yieldsResponse.error) throw new Error(`查询产量失败: ${yieldsResponse.error.message}`);
 
     // 合并原材料数据（按车间汇总数量）
     const materialSummary: Record<string, number> = {};
@@ -95,14 +101,33 @@ export async function GET(request: NextRequest) {
       adjustmentsSummary[item.adjustment_name] = (adjustmentsSummary[item.adjustment_name] || 0) + (item.amount || 0);
     });
 
+    // 合并产量数据（按车间汇总）
+    const yieldsSummary: Record<string, number> = {};
+    yieldsResponse.data?.forEach((item) => {
+      yieldsSummary[item.workshop] = (yieldsSummary[item.workshop] || 0) + (item.alkali_yield || 0);
+    });
+
     // 获取车间列表（从所有数据源中获取）
     const allWorkshops = [
       ...(materialsResponse.data?.map((item) => item.workshop) || []),
       ...(laborResponse.data?.map((item) => item.workshop) || []),
       ...(periodResponse.data?.map((item) => item.workshop) || []),
       ...(adjustmentsResponse.data?.map((item) => item.workshop) || []),
+      ...(yieldsResponse.data?.map((item) => item.workshop) || []),
     ];
     const workshops = [...new Set(allWorkshops)];
+
+    // 根据产品类型获取对应的产量
+    let totalYield = 0;
+    if (product === '氯碱') {
+      yieldsResponse.data?.forEach((item) => {
+        totalYield += (item.alkali_yield || 0);
+      });
+    } else if (product === '盐酸') {
+      yieldsResponse.data?.forEach((item) => {
+        totalYield += (item.hydrochloric_acid_yield || 0);
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -116,6 +141,7 @@ export async function GET(request: NextRequest) {
         periodExpenses: periodSummary,
         adjustments: adjustmentsSummary,
         workshops,
+        totalYield, // 总产量
       },
     });
   } catch (error) {
