@@ -685,7 +685,7 @@ function CostAnalysisView() {
 
   // 物料名称标准化
   const normalizeMaterialName = (name: string): string => {
-    if (name.includes('32%工业级烧碱') || name.includes('食品级烧碱')) {
+    if (name.includes('32%工业级烧碱') || name.includes('32%食品级烧碱')) {
       return '32%烧碱';
     }
     return name;
