@@ -51,60 +51,47 @@ export async function GET(request: NextRequest) {
 
     // 2. 获取原材料数据
     // 规则：
-    // - 当某天没有产量数据时，跳过该天的计算
-    // - 只有当天有产量数据时，才累加该天的原材料数据
+    // - 根据原材料数量数据来判断哪些日期有数据
     // - 单日：使用当日采购单价
     // - 区间：
-    //   - 单位为元的项目：直接相加有产量日期的数量
-    //   - 其他物料：数量相加，成本 = Σ(有产量日期的数量 × 单价)，单价 = 总成本 / 总数量（加权均价）
+    //   - 单位为元的项目：直接相加有数据日期的数量
+    //   - 其他物料：数量相加，成本 = Σ(有数据日期的数量 × 单价)，单价 = 总成本 / 总数量（加权均价）
 
     // 获取原材料数据（数量来自material_costs，单价来自purchase_prices）
     const materialQuantities: Record<string, number> = {};
     const materialCosts: Record<string, number> = {};
     const materialPrices: Record<string, number> = {};
-    
-    // 获取产量数据（用于判断哪些日期有数据）
-    const yieldResponse = await client
-      .from('production_yields')
-      .select('*')
-      .eq('product', product)
-      .gte('report_date', startDate)
-      .lte('report_date', endDate);
 
-    // 构建有数据的日期集合
-    const datesWithYield = new Set<string>();
-    if (yieldResponse.data) {
-      for (const item of yieldResponse.data) {
-        const dateStr = new Date(item.report_date).toISOString().split('T')[0];
-        datesWithYield.add(dateStr);
+    // 按日期获取原材料数据，构建有数据的日期集合
+    const validDates: string[] = [];
+    const datesWithMaterial = new Set<string>();
+    
+    for (const date of dates) {
+      const quantityResponse = await client
+        .from('material_costs')
+        .select('material_name, quantity')
+        .eq('product', product)
+        .eq('report_date', date);
+
+      if (quantityResponse.data && quantityResponse.data.length > 0) {
+        datesWithMaterial.add(date);
+        validDates.push(date);
+        
+        // 累加数量
+        for (const item of quantityResponse.data) {
+          const name = item.material_name;
+          const qty = parseFloat(item.quantity) || 0;
+          
+          if (!materialQuantities[name]) {
+            materialQuantities[name] = 0;
+          }
+          materialQuantities[name] += qty;
+        }
       }
     }
 
-    // 只有有产量数据的日期才进行计算
-    const validDates = dates.filter(date => datesWithYield.has(date));
-
+    // 只有有原材料数据的日期才进行计算
     if (validDates.length > 0) {
-      // 按日期获取原材料数量和单价，计算总成本
-      for (const date of validDates) {
-        const quantityResponse = await client
-          .from('material_costs')
-          .select('*')
-          .eq('product', product)
-          .eq('report_date', date);
-
-        if (quantityResponse.data) {
-          for (const item of quantityResponse.data) {
-            const name = item.material_name;
-            const qty = parseFloat(item.quantity) || 0;
-            
-            if (!materialQuantities[name]) {
-              materialQuantities[name] = 0;
-            }
-            materialQuantities[name] += qty;
-          }
-        }
-      }
-
       // 计算原材料成本和加权均价
       for (const name of Object.keys(materialQuantities)) {
         const quantity = materialQuantities[name];
@@ -115,9 +102,19 @@ export async function GET(request: NextRequest) {
           materialPrices[name] = 1; // 单价显示为1元（因为数量就是金额）
         } else {
           // 非直接成本项目：计算加权均价
-          let totalCost = 0; // 总成本 = Σ(有产量日期的数量 × 单价)
+          let totalCost = 0; // 总成本 = Σ(有数据日期的数量 × 单价)
           
           for (const date of validDates) {
+            // 获取该日期的单价
+            const priceResponse = await client
+              .from('purchase_prices')
+              .select('price')
+              .eq('report_date', date)
+              .eq('material_name', name)
+              .single();
+            
+            const dayPrice = priceResponse.data ? parseFloat(priceResponse.data.price) || 0 : 0;
+            
             // 获取该日期的数量
             const quantityResponse = await client
               .from('material_costs')
@@ -128,16 +125,6 @@ export async function GET(request: NextRequest) {
               .single();
             
             const dayQuantity = quantityResponse.data ? parseFloat(quantityResponse.data.quantity) || 0 : 0;
-            
-            // 获取该日期的单价
-            const priceResponse = await client
-              .from('purchase_prices')
-              .select('price')
-              .eq('report_date', date)
-              .eq('material_name', name)
-              .single();
-            
-            const dayPrice = priceResponse.data ? parseFloat(priceResponse.data.price) || 0 : 0;
             
             // 累加该日期的成本
             totalCost += dayQuantity * dayPrice;
@@ -219,7 +206,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 6. 获取车间列表（只获取有产量日期的数据）
+    // 6. 获取车间列表（只获取有原材料数据日期的数据）
     const workshopSet = new Set<string>();
     
     for (const date of validDates) {
@@ -236,14 +223,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 7. 计算总产量（碱产量）
+    // 7. 获取产量数据并计算总产量（碱产量）
     let totalYield = 0;
     
-    if (yieldResponse.data) {
-      for (const item of yieldResponse.data) {
-        // 氯碱/32%烧碱产品使用碱产量
-        if (product === '氯碱') {
-          totalYield += parseFloat(item.alkali_yield) || 0;
+    // 从production_yields表获取产量（虽然不用于判断日期是否有效，但用于显示总产量）
+    for (const date of validDates) {
+      const yieldResponse = await client
+        .from('production_yields')
+        .select('*')
+        .eq('product', product)
+        .eq('report_date', date);
+
+      if (yieldResponse.data) {
+        for (const item of yieldResponse.data) {
+          // 氯碱/32%烧碱产品使用碱产量
+          if (product === '氯碱') {
+            totalYield += parseFloat(item.alkali_yield) || 0;
+          }
         }
       }
     }
