@@ -287,7 +287,9 @@ export default function AdminPage() {
       // 重新加载数据
       await loadSalesData();
 
-      toast.success(`数据已保存！共 ${result.data?.length || 0} 条记录（旧数据已清除）`);
+      const insertedCount = result.data?.insertedCount || 0;
+      const failedCount = result.data?.failedCount || 0;
+      toast.success(`数据已保存！共 ${insertedCount} 条记录导入成功${failedCount > 0 ? `，${failedCount} 条失败` : ''}`);
     } catch (error) {
       console.error('解析Excel失败:', error);
       toast.error(error instanceof Error ? error.message : '解析Excel文件失败');

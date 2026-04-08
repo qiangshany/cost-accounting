@@ -97,17 +97,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 限制单次插入数量，避免超时
-    const MAX_BATCH_SIZE = 1000;
-    if (salesData.length > MAX_BATCH_SIZE) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `单次最多只能插入 ${MAX_BATCH_SIZE} 条数据，当前有 ${salesData.length} 条`,
-        },
-        { status: 400 }
-      );
-    }
+    // 限制单批插入数量，分批处理
+    const BATCH_SIZE = 1000;
+    const totalRecords = salesData.length;
+    let insertedCount = 0;
+    let failedCount = 0;
+    const failedRecords: number[] = [];
 
     const client = getSupabaseClient();
 
@@ -123,17 +118,28 @@ export async function POST(request: NextRequest) {
       outbound_quantity: item.出库数量,
     }));
 
-    // 批量插入数据
-    const { data, error } = await client.from('sales_data').insert(records).select();
+    // 分批插入数据
+    for (let i = 0; i < records.length; i += BATCH_SIZE) {
+      const batch = records.slice(i, i + BATCH_SIZE);
+      const { data, error } = await client.from('sales_data').insert(batch).select();
 
-    if (error) {
-      throw new Error(`数据库操作失败: ${error.message}`);
+      if (error) {
+        failedCount += batch.length;
+        failedRecords.push(i / BATCH_SIZE + 1);
+        console.error(`批次 ${i / BATCH_SIZE + 1} 插入失败:`, error);
+      } else {
+        insertedCount += data?.length || 0;
+      }
+    }
+
+    if (insertedCount === 0 && failedCount > 0) {
+      throw new Error(`所有批次插入失败，共 ${failedCount} 条数据`);
     }
 
     return NextResponse.json({
       success: true,
-      data: data,
-      message: `成功导入 ${data?.length || 0} 条销售数据`,
+      data: { insertedCount, failedCount },
+      message: `成功导入 ${insertedCount} 条销售数据${failedCount > 0 ? `，${failedCount} 条失败` : ''}`,
     });
   } catch (error) {
     console.error('保存销售数据错误:', error);
