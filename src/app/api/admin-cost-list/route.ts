@@ -46,17 +46,22 @@ export async function GET(request: NextRequest) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
+    // 单位为元的成本项目（这些项目数量本身就是金额，不需要单价计算）
+    const DIRECT_COST_ITEMS = ['化水药品费用', '锅炉清焦剂等', '脱硫、铲硝及输煤费'];
+
     // 2. 获取原材料数据
     // 原材料成本 = 数量 × 单价
     // 单日：使用当日采购单价
-    // 区间：该区间内总金额 / 总数量
+    // 区间：
+    //   - 单位为元的项目：直接相加数量
+    //   - 其他物料：数量相加，成本 = Σ(每天数量 × 每天单价)，单价 = 总成本 / 总数量（加权均价）
 
     // 获取原材料数据（数量来自material_costs，单价来自purchase_prices）
     const materialQuantities: Record<string, number> = {};
     const materialCosts: Record<string, number> = {};
     const materialPrices: Record<string, number> = {};
     
-    // 获取产量数据（用于计算单价）
+    // 获取产量数据（用于判断是否有数据）
     const yieldResponse = await client
       .from('production_yields')
       .select('*')
@@ -65,7 +70,7 @@ export async function GET(request: NextRequest) {
       .lte('report_date', endDate);
 
     if (yieldResponse.data && yieldResponse.data.length > 0) {
-      // 按日期获取原材料数量
+      // 按日期获取原材料数量和单价，计算总成本
       for (const date of dates) {
         const quantityResponse = await client
           .from('material_costs')
@@ -84,56 +89,49 @@ export async function GET(request: NextRequest) {
             materialQuantities[name] += qty;
           }
         }
-
-        // 获取采购单价
-        const priceResponse = await client
-          .from('purchase_prices')
-          .select('*')
-          .eq('report_date', date);
-
-        if (priceResponse.data) {
-          for (const priceItem of priceResponse.data) {
-            const name = priceItem.material_name;
-            const price = parseFloat(priceItem.price) || 0;
-            
-            // 单日：直接使用当日单价
-            // 区间：累加金额用于后续计算均价
-            if (isSingleDay) {
-              materialPrices[name] = price;
-            }
-          }
-        }
       }
 
-      // 计算原材料成本
+      // 计算原材料成本和加权均价
       for (const name of Object.keys(materialQuantities)) {
         const quantity = materialQuantities[name];
         
-        if (isSingleDay) {
-          // 单日：使用当日采购单价
-          const price = materialPrices[name] || 0;
-          materialCosts[name] = quantity * price;
+        // 单位为元的项目：数量本身就是金额，成本 = 数量相加
+        if (DIRECT_COST_ITEMS.includes(name)) {
+          materialCosts[name] = quantity; // 数量就是金额
+          materialPrices[name] = 1; // 单价显示为1元（因为数量就是金额）
         } else {
-          // 区间：获取所有日期的采购单价，计算区间总金额
-          let totalAmount = 0;
+          // 非直接成本项目：计算加权均价
+          let totalCost = 0; // 总成本 = Σ(数量 × 单价)
           
           for (const date of dates) {
+            // 获取该日期的数量
+            const quantityResponse = await client
+              .from('material_costs')
+              .select('quantity')
+              .eq('product', product)
+              .eq('report_date', date)
+              .eq('material_name', name)
+              .single();
+            
+            const dayQuantity = quantityResponse.data ? parseFloat(quantityResponse.data.quantity) || 0 : 0;
+            
+            // 获取该日期的单价
             const priceResponse = await client
               .from('purchase_prices')
               .select('price')
               .eq('report_date', date)
               .eq('material_name', name)
               .single();
-
-            if (priceResponse.data) {
-              totalAmount += (parseFloat(priceResponse.data.price) || 0);
-            }
+            
+            const dayPrice = priceResponse.data ? parseFloat(priceResponse.data.price) || 0 : 0;
+            
+            // 累加该日期的成本
+            totalCost += dayQuantity * dayPrice;
           }
           
-          // 区间均价 = 总金额 / 天数
-          const avgPrice = dates.length > 0 ? totalAmount / dates.length : 0;
-          materialPrices[name] = parseFloat(avgPrice.toFixed(4));
-          materialCosts[name] = quantity * avgPrice;
+          materialCosts[name] = totalCost;
+          // 加权均价 = 总成本 / 总数量
+          materialPrices[name] = quantity > 0 ? parseFloat((totalCost / quantity).toFixed(4)) : 0;
         }
       }
     }
