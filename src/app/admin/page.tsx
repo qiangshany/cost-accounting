@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Calculator, LogOut, TrendingUp, Calendar, Factory, Trash2, List, BarChart3 } from 'lucide-react';
+import { Calculator, LogOut, TrendingUp, Calendar, Factory, Trash2, List, BarChart3, Upload, FileSpreadsheet, Loader2 } from 'lucide-react';
 
 // 原材料类成本项及单位
 const MATERIAL_ITEMS: { name: string; unit: string }[] = [
@@ -588,16 +588,104 @@ export default function AdminPage() {
 
 // 成本分析视图组件
 function CostAnalysisView({ totalCost, totalYield, selectedProduct }: { totalCost: number; totalYield: number; selectedProduct: string }) {
+  const [salesData, setSalesData] = useState<any[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
   // 32%烧碱的吨成本计算
-  // 公式：总成本 * 0.53 / (碱产量/0.32)
   const alkaliCostPerTon = totalYield > 0 ? (totalCost * 0.53) / (totalYield / 0.32) : 0;
+
+  // 从数据库加载销售数据
+  useEffect(() => {
+    const fetchSalesData = async () => {
+      try {
+        const response = await fetch('/api/sales-data');
+        const result = await response.json();
+        if (result.data && Array.isArray(result.data)) {
+          setSalesData(result.data);
+        }
+      } catch (error) {
+        console.error('加载销售数据失败:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSalesData();
+  }, []);
+
+  // 处理Excel文件上传
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const data = await file.arrayBuffer();
+      const xlsxModule = await import('xlsx');
+      const workbook = xlsxModule.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      
+      const jsonData = xlsxModule.utils.sheet_to_json(worksheet, { raw: false }) as Record<string, string>[];
+      
+      const salesDataArray = jsonData.map(row => ({
+        单据日期: row['单据日期'] || '',
+        客户: row['客户'] || '',
+        业务员: row['业务员'] || '',
+        物料名称: row['物料名称'] || '',
+        销售计划数量: parseFloat(String(row['销售计划数量']).replace(/,/g, '')) || 0,
+        含税净价: parseFloat(String(row['含税净价']).replace(/,/g, '')) || 0,
+        价税合计: parseFloat(String(row['价税合计']).replace(/,/g, '')) || 0,
+        出库数量: parseFloat(String(row['出库数量']).replace(/,/g, '')) || 0
+      })).filter(item => item.单据日期 && item.物料名称);
+
+      const response = await fetch('/api/sales-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: salesDataArray }),
+      });
+      
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || '保存数据失败');
+      }
+
+      setSalesData(salesDataArray);
+      alert(`数据已保存！共 ${salesDataArray.length} 条记录`);
+    } catch (error) {
+      console.error('解析Excel文件失败:', error);
+      alert('解析Excel文件失败，请确保文件格式正确');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // 计算销售均价（32%烧碱）
+  const alkali32SalesData = salesData.filter(item => 
+    item.物料名称.includes('32%') || item.物料名称.includes('烧碱')
+  );
+
+  const avgSalesPrice = React.useMemo(() => {
+    if (alkali32SalesData.length === 0) return 0;
+    const totalQuantity = alkali32SalesData.reduce((sum, item) => sum + item.销售计划数量, 0);
+    const totalPrice = alkali32SalesData.reduce((sum, item) => sum + item.价税合计, 0);
+    return totalQuantity > 0 ? totalPrice / totalQuantity : 0;
+  }, [alkali32SalesData]);
+
+  const grossProfitPerTon = avgSalesPrice - alkaliCostPerTon;
+  const grossProfitMargin = avgSalesPrice > 0 ? (grossProfitPerTon / avgSalesPrice) * 100 : 0;
 
   return (
     <div className="space-y-6">
+      {/* 成本和毛利汇总 */}
       <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-blue-950/30 dark:via-slate-900 dark:to-indigo-950/30">
         <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
           <CardTitle className="text-xl text-center text-slate-800 dark:text-slate-200">
-            32%烧碱成本分析
+            32%烧碱成本与毛利分析
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
@@ -615,19 +703,129 @@ function CostAnalysisView({ totalCost, totalYield, selectedProduct }: { totalCos
                   {totalYield.toFixed(2)} 吨
                 </div>
               </div>
+              <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">32%烧碱吨成本</div>
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  ¥{alkaliCostPerTon.toFixed(2)}
+                </div>
+              </div>
+              <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">销售均价</div>
+                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                  ¥{avgSalesPrice.toFixed(2)}
+                </div>
+              </div>
             </div>
 
-            <div className="p-6 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 text-white rounded-xl shadow-md">
+            <div className="p-6 bg-gradient-to-r from-purple-600 to-purple-700 dark:from-purple-700 dark:to-purple-800 text-white rounded-xl shadow-md">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-blue-100 text-sm mb-1">32%烧碱吨成本</div>
+                  <div className="text-purple-100 text-sm mb-1">吨毛利</div>
                   <div className="text-4xl font-bold">
-                    ¥{alkaliCostPerTon.toFixed(2)}
+                    ¥{grossProfitPerTon.toFixed(2)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-purple-100 text-sm mb-1">毛利率</div>
+                  <div className="text-2xl font-bold">
+                    {grossProfitMargin.toFixed(2)}%
                   </div>
                 </div>
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 销售数据导入 */}
+      <Card className="shadow-lg border-slate-200 dark:border-slate-800">
+        <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
+          <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
+            销售数据管理
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4 mb-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  上传中...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  导入Excel
+                </>
+              )}
+            </Button>
+            {salesData.length > 0 && (
+              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                <span className="inline-flex items-center justify-center w-5 h-5 bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 rounded-full text-xs font-bold">
+                  ✓
+                </span>
+                已加载 {salesData.length} 条数据
+              </div>
+            )}
+          </div>
+
+          {isLoading ? (
+            <div className="text-center py-8">
+              <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-blue-600" />
+              <p className="text-slate-600 dark:text-slate-400">加载数据中...</p>
+            </div>
+          ) : salesData.length === 0 ? (
+            <div className="text-center py-8">
+              <FileSpreadsheet className="w-16 h-16 mx-auto mb-4 opacity-30 text-slate-400" />
+              <p className="text-lg mb-2 text-slate-600 dark:text-slate-400">暂无销售数据</p>
+              <p className="text-sm text-slate-500 dark:text-slate-500">请先上传Excel文件</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-700">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">单据日期</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">客户</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">物料名称</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">销售数量</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">价税合计</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">均价</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {salesData.slice(0, 20).map((item, index) => (
+                    <tr key={index} className="border-b border-slate-100 dark:border-slate-800">
+                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{item.单据日期}</td>
+                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{item.客户}</td>
+                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{item.物料名称}</td>
+                      <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">{item.销售计划数量.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">¥{item.价税合计.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">
+                        {item.销售计划数量 > 0 ? `¥${(item.价税合计 / item.销售计划数量).toFixed(2)}` : '¥0.00'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {salesData.length > 20 && (
+                <div className="text-center py-3 text-sm text-slate-500 dark:text-slate-400">
+                  显示前20条，共{salesData.length}条数据
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

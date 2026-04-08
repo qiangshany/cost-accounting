@@ -154,3 +154,26 @@ export const costReports = pgTable(
     unique("cost_reports_product_workshop_date_unique").on(table.product, table.reportDate, table.workshop),
   ]
 );
+
+// 销售数据表（用于销售计划数据分析）
+export const salesData = pgTable(
+  "sales_data",
+  {
+    id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+    orderDate: date("order_date").notNull(), // 单据日期
+    customer: varchar("customer", { length: 100 }).notNull(), // 客户
+    salesman: varchar("salesman", { length: 50 }), // 业务员
+    materialName: varchar("material_name", { length: 100 }).notNull(), // 物料名称
+    planQuantity: varchar("plan_quantity", { length: 20 }).notNull(), // 销售计划数量
+    taxPrice: varchar("tax_price", { length: 20 }).notNull(), // 含税净价
+    taxTotal: varchar("tax_total", { length: 20 }).notNull(), // 价税合计
+    outQuantity: varchar("out_quantity", { length: 20 }).notNull(), // 出库数量
+    createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+  },
+  (table) => [
+    index("sales_data_order_date_idx").using("btree", table.orderDate.asc().nullsLast().op("date_ops")),
+    index("sales_data_material_name_idx").using("btree", table.materialName.asc().nullsLast().op("text_ops")),
+    index("sales_data_customer_idx").using("btree", table.customer.asc().nullsLast().op("text_ops")),
+  ]
+);
