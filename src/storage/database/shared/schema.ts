@@ -1,4 +1,4 @@
-import { pgTable, serial, timestamp, index, unique, varchar, date, jsonb, real } from "drizzle-orm/pg-core"
+import { pgTable, serial, timestamp, index, unique, varchar, date, jsonb, real, numeric } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
@@ -16,9 +16,9 @@ export const productionYields = pgTable(
     reportDate: date("report_date").notNull(),
     product: varchar({ length: 50 }).notNull(),
     workshop: varchar({ length: 50 }).notNull(),
-    alkaliYield: real("alkali_yield"), // 碱产量
-    chlorineYield: real("chlorine_yield"), // 氯产量
-    hydrochloricAcidYield: real("hydrochloric_acid_yield"), // 盐酸产量
+    alkaliYield: numeric("alkali_yield"), // 碱产量
+    chlorineYield: numeric("chlorine_yield"), // 氯产量
+    hydrochloricAcidYield: numeric("hydrochloric_acid_yield"), // 盐酸产量
     createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
   },
@@ -37,7 +37,7 @@ export const materialCosts = pgTable(
     materialName: varchar("material_name", { length: 100 }).notNull(),
     product: varchar({ length: 50 }).notNull(),
     workshop: varchar({ length: 50 }).notNull(),
-    quantity: real().notNull(), // 数量
+    quantity: numeric().notNull(), // 数量
     unit: varchar({ length: 20 }).notNull(), // 单位
     createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
@@ -57,7 +57,7 @@ export const purchasePrices = pgTable(
     id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
     reportDate: date("report_date").notNull(),
     materialName: varchar("material_name", { length: 100 }).notNull(),
-    price: real().notNull(), // 单价
+    price: numeric().notNull(), // 单价
     unit: varchar({ length: 20 }).notNull(), // 单位
     createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
@@ -79,7 +79,7 @@ export const laborMaintenanceCosts = pgTable(
     costItemName: varchar("cost_item_name", { length: 100 }).notNull(),
     product: varchar({ length: 50 }).notNull(),
     workshop: varchar({ length: 50 }).notNull(),
-    amount: real().notNull(), // 金额
+    amount: numeric().notNull(), // 金额
     unit: varchar({ length: 20 }).notNull(), // 单位
     createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
@@ -99,7 +99,7 @@ export const periodExpenses = pgTable(
     reportDate: date("report_date").notNull(),
     expenseItemName: varchar("expense_item_name", { length: 100 }).notNull(),
     product: varchar({ length: 50 }).notNull(),
-    amount: real().notNull(), // 金额
+    amount: numeric().notNull(), // 金额
     unit: varchar({ length: 20 }).notNull(), // 单位
     createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
@@ -119,7 +119,7 @@ export const adjustments = pgTable(
     reportDate: date("report_date").notNull(),
     adjustmentName: varchar("adjustment_name", { length: 100 }).notNull(),
     product: varchar({ length: 50 }).notNull(),
-    amount: real().notNull(), // 金额
+    amount: numeric().notNull(), // 金额
     unit: varchar({ length: 20 }).notNull(), // 单位
     createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
