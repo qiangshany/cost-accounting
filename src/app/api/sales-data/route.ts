@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+// Excel数据类型定义
+interface ExcelSalesData {
+  单据日期: string;
+  客户: string;
+  业务员: string;
+  物料名称: string;
+  销售计划数量: number;
+  含税净价: number;
+  价税合计: number;
+  出库数量: number;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -100,7 +112,7 @@ export async function POST(request: NextRequest) {
     const client = getSupabaseClient();
 
     // 转换数据格式
-    const records = salesData.map((item: any) => ({
+    const records = salesData.map((item: ExcelSalesData) => ({
       document_date: item.单据日期,
       customer: item.客户,
       salesman: item.业务员,

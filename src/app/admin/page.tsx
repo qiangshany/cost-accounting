@@ -1049,133 +1049,116 @@ function CostAnalysisView() {
         </Card>
       )}
 
-      {/* 第一部分：Excel导入和筛选框 */}
-      <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
-          <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
-            销售数据导入与筛选
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="space-y-6">
-            {/* Excel导入 */}
-            <div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              <Button 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                {isUploading ? '导入中...' : '导入Excel'}
-              </Button>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                支持格式：.xlsx, .xls
-              </p>
+      {/* Excel导入 - 简洁版本 */}
+      <div className="flex items-center justify-between mb-4">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+        <Button 
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          variant="outline"
+          size="sm"
+          className="text-xs"
+        >
+          <Upload className="w-3 h-3 mr-1" />
+          {isUploading ? '导入中...' : '导入Excel'}
+        </Button>
+      </div>
+
+      {/* 筛选框 - 简洁紧凑 */}
+      <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mb-4">
+        <CardContent className="py-3">
+          <div className="flex items-center gap-6">
+            {/* 日期区间筛选 */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">日期</span>
+              <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 w-24 px-2 justify-start text-left text-xs">
+                    <CalendarIcon className="mr-1.5 h-3 w-3" />
+                    {dateRange.from ? format(dateRange.from, 'MM-dd', { locale: zhCN }) : "起始"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.from}
+                    onSelect={(date) => {
+                      if (date) {
+                        const newRange = { ...dateRange, from: date };
+                        if (!dateRange.to || dateRange.to < date) {
+                          newRange.to = date;
+                        }
+                        setDateRange(newRange);
+                        setIsStartCalendarOpen(false);
+                      }
+                    }}
+                    locale={zhCN}
+                  />
+                </PopoverContent>
+              </Popover>
+              <span className="text-slate-400 text-xs">至</span>
+              <Popover open={isEndCalendarOpen} onOpenChange={setIsEndCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 w-24 px-2 justify-start text-left text-xs">
+                    <CalendarIcon className="mr-1.5 h-3 w-3" />
+                    {dateRange.to ? format(dateRange.to, 'MM-dd', { locale: zhCN }) : "结束"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.to}
+                    onSelect={(date) => {
+                      if (date) {
+                        const newRange = { ...dateRange, to: date };
+                        if (!dateRange.from || dateRange.from > date) {
+                          newRange.from = date;
+                        }
+                        setDateRange(newRange);
+                        setIsEndCalendarOpen(false);
+                      }
+                    }}
+                    locale={zhCN}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
-            {/* 日期区间筛选和物料筛选 */}
-            <div className="flex gap-4">
-              {/* 日期区间筛选 */}
-              <div className="flex-1">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                  日期区间筛选
-                </Label>
-                <div className="flex gap-2">
-                  {/* 起始日期 */}
-                  <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-32 justify-start text-left">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange.from ? format(dateRange.from, 'yyyy-MM-dd', { locale: zhCN }) : "起始日期"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={dateRange.from}
-                        onSelect={(date) => {
-                          if (date) {
-                            const newRange = { ...dateRange, from: date };
-                            if (!dateRange.to || dateRange.to < date) {
-                              newRange.to = date;
-                            }
-                            setDateRange(newRange);
-                            setIsStartCalendarOpen(false);
-                          }
-                        }}
-                        locale={zhCN}
-                      />
-                    </PopoverContent>
-                  </Popover>
-
-                  {/* 结束日期 */}
-                  <Popover open={isEndCalendarOpen} onOpenChange={setIsEndCalendarOpen}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-32 justify-start text-left">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange.to ? format(dateRange.to, 'yyyy-MM-dd', { locale: zhCN }) : "结束日期"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={dateRange.to}
-                        onSelect={(date) => {
-                          if (date) {
-                            const newRange = { ...dateRange, to: date };
-                            if (!dateRange.from || dateRange.from > date) {
-                              newRange.from = date;
-                            }
-                            setDateRange(newRange);
-                            setIsEndCalendarOpen(false);
-                          }
-                        }}
-                        locale={zhCN}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-
-              {/* 物料筛选 */}
-              <div className="flex-1">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                  物料筛选
-                </Label>
-                <div className="flex flex-wrap gap-2">
+            {/* 物料筛选 */}
+            <div className="flex items-center gap-2 flex-1">
+              <span className="text-xs text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">物料</span>
+              <div className="flex flex-wrap gap-1.5">
+                <Button
+                  variant={!selectedMaterial ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedMaterial('')}
+                  className={`h-7 px-3 text-xs ${!selectedMaterial
+                    ? "bg-blue-600 hover:bg-blue-700 text-white"
+                    : "bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  全部
+                </Button>
+                {uniqueMaterials.map(material => (
                   <Button
-                    variant={!selectedMaterial ? "default" : "outline"}
+                    key={material}
+                    variant={selectedMaterial === material ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setSelectedMaterial('')}
-                    className={!selectedMaterial
+                    onClick={() => setSelectedMaterial(material)}
+                    className={`h-7 px-3 text-xs ${selectedMaterial === material
                       ? "bg-blue-600 hover:bg-blue-700 text-white"
                       : "bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
-                    }
+                    }`}
                   >
-                    全部
+                    {material}
                   </Button>
-                  {uniqueMaterials.map(material => (
-                    <Button
-                      key={material}
-                      variant={selectedMaterial === material ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedMaterial(material)}
-                      className={selectedMaterial === material
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
-                        : "bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
-                      }
-                    >
-                      {material}
-                    </Button>
-                  ))}
-                </div>
+                ))}
               </div>
             </div>
           </div>
@@ -1183,12 +1166,7 @@ function CostAnalysisView() {
       </Card>
 
       {/* 第二部分：饼图 */}
-      <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
-          <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
-            销售分析图表
-          </CardTitle>
-        </CardHeader>
+      <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mb-4">
         <CardContent className="pt-6">
           {chartData.length === 0 ? (
             <div className="flex items-center justify-center h-64 bg-slate-50 dark:bg-slate-800 rounded-lg">
@@ -1371,11 +1349,6 @@ function CostAnalysisView() {
 
       {/* 第三部分：表格 */}
       <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
-          <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
-            客户销售分析表
-          </CardTitle>
-        </CardHeader>
         <CardContent className="pt-6">
           {tableData.length === 0 ? (
             <div className="text-center py-8 text-slate-500 dark:text-slate-400">
