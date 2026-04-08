@@ -73,10 +73,21 @@ interface SummaryData {
 
 export default function AdminPage() {
   const router = useRouter();
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedProduct, setSelectedProduct] = useState<string>('氯碱');
+  const [selectedProduct, setSelectedProduct] = useState<string>('32%液碱');
   const [view, setView] = useState<'list' | 'analysis'>('list');
-  const [summaryData, setSummaryData] = useState<SummaryData>({
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // 共享筛选状态
+  const today = new Date();
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: today,
+    to: today
+  });
+  const [isStartCalendarOpen, setIsStartCalendarOpen] = useState(false);
+  const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false);
+  
+  // 成本列表数据状态
+  const [costListData, setCostListData] = useState<SummaryData>({
     materials: { quantities: {}, costs: {}, prices: {} },
     laborAndMaintenance: {},
     periodExpenses: {},
@@ -84,7 +95,127 @@ export default function AdminPage() {
     workshops: [],
     totalYield: 0,
   });
-  const [isLoading, setIsLoading] = useState(false);
+  
+  // 销售数据状态（供成本分析视图使用）
+  const [salesData, setSalesData] = useState<SalesData[]>([]);
+  const [selectedMaterial, setSelectedMaterial] = useState<string>('32%烧碱');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // 销售数据接口
+  interface SalesData {
+    单据日期: string;
+    客户: string;
+    业务员: string;
+    物料名称: string;
+    销售计划数量: number;
+    含税净价: number;
+    价税合计: number;
+    出库数量: number;
+  }
+  
+  // 加载成本列表数据
+  const loadCostListData = async () => {
+    if (!dateRange.from || !dateRange.to || !selectedProduct) {
+      return;
+    }
+
+    setIsLoading(true);
+    
+    const fromDateStr = format(dateRange.from, 'yyyy-MM-dd');
+    const toDateStr = format(dateRange.to, 'yyyy-MM-dd');
+    
+    try {
+      const response = await fetch(
+        `/api/admin-cost-list?startDate=${fromDateStr}&endDate=${toDateStr}&product=${selectedProduct}`
+      );
+
+      if (!response.ok) {
+        throw new Error('加载数据失败');
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        setCostListData(data.data);
+      } else {
+        setCostListData({
+          materials: { quantities: {}, costs: {}, prices: {} },
+          laborAndMaintenance: {},
+          periodExpenses: {},
+          adjustments: {},
+          workshops: [],
+          totalYield: 0,
+        });
+      }
+    } catch (error) {
+      console.error('加载成本列表数据失败:', error);
+      setCostListData({
+        materials: { quantities: {}, costs: {}, prices: {} },
+        laborAndMaintenance: {},
+        periodExpenses: {},
+        adjustments: {},
+        workshops: [],
+        totalYield: 0,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // 加载销售数据
+  const loadSalesData = async () => {
+    setIsLoading(true);
+    
+    try {
+      const pageSize = 1000;
+      let page = 0;
+      let allData: SalesData[] = [];
+      let hasMore = true;
+
+      while (hasMore) {
+        const params = new URLSearchParams();
+        params.append('page', page.toString());
+        params.append('pageSize', pageSize.toString());
+
+        const response = await fetch(`/api/sales-data?${params.toString()}`);
+
+        if (!response.ok) {
+          throw new Error('加载数据失败');
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          allData = [...allData, ...result.data];
+          hasMore = result.hasMore || false;
+          page++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      setSalesData(allData);
+    } catch (error) {
+      console.error('加载销售数据失败:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // 当日期、产品变化时，重新加载成本列表数据
+  useEffect(() => {
+    if (view === 'list') {
+      loadCostListData();
+    }
+  }, [dateRange, selectedProduct, view]);
+  
+  // 当切换到成本分析视图时，加载销售数据
+  useEffect(() => {
+    if (view === 'analysis' && salesData.length === 0) {
+      loadSalesData();
+    }
+  }, [view, salesData.length]);
 
   // 检查登录状态和角色
   useEffect(() => {
@@ -96,101 +227,70 @@ export default function AdminPage() {
       return;
     }
   }, [router]);
+  
+  // Excel上传处理
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    setSelectedDate(today);
-  }, []);
+    setIsUploading(true);
 
-  // 加载数据
-  useEffect(() => {
-    const loadData = async () => {
-      // 如果日期或产品为空，不加载数据
-      if (!selectedDate || !selectedProduct) {
-        return;
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+      // 验证数据结构
+      if (!Array.isArray(jsonData) || jsonData.length === 0) {
+        throw new Error('Excel文件为空或格式不正确');
       }
 
-      setIsLoading(true);
-      // 清空旧数据，避免闪烁
-      setSummaryData({
-        materials: { quantities: {}, costs: {}, prices: {} },
-        laborAndMaintenance: {},
-        periodExpenses: {},
-        adjustments: {},
-        workshops: [],
-        totalYield: 0,
+      const firstRow = jsonData[0] as Record<string, unknown>;
+      const requiredFields = ['单据日期', '客户', '业务员', '物料名称', '销售计划数量', '含税净价', '价税合计', '出库数量'];
+      const missingFields = requiredFields.filter(field => !(field in firstRow));
+
+      if (missingFields.length > 0) {
+        throw new Error(`缺少必要字段: ${missingFields.join(', ')}`);
+      }
+
+      const salesDataArr: SalesData[] = jsonData.map((row: Record<string, unknown>) => ({
+        单据日期: String(row['单据日期'] || ''),
+        客户: String(row['客户'] || ''),
+        业务员: String(row['业务员'] || ''),
+        物料名称: String(row['物料名称'] || ''),
+        销售计划数量: Number(row['销售计划数量']) || 0,
+        含税净价: Number(row['含税净价']) || 0,
+        价税合计: Number(row['价税合计']) || 0,
+        出库数量: Number(row['出库数量']) || 0,
+      }));
+
+      // 保存到数据库
+      const response = await fetch('/api/sales-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salesData: salesDataArr }),
       });
-      
-      // 将日期减去一天，加载前一天的数据
-      const queryDate = new Date(selectedDate);
-      queryDate.setDate(queryDate.getDate() - 1);
-      const queryDateStr = queryDate.toISOString().split('T')[0];
-      
-      try {
-        const response = await fetch(
-          `/api/admin-summary?date=${queryDateStr}&product=${selectedProduct}`
-        );
 
-        if (!response.ok) {
-          // API返回错误状态，直接显示无数据
-          setSummaryData({
-            materials: { quantities: {}, costs: {}, prices: {} },
-            laborAndMaintenance: {},
-            periodExpenses: {},
-            adjustments: {},
-            workshops: [],
-            totalYield: 0,
-          });
-          setIsLoading(false);
-          return;
-        }
+      const result = await response.json();
 
-        const text = await response.text();
-        if (!text) {
-          // 空响应
-          setSummaryData({
-            materials: { quantities: {}, costs: {}, prices: {} },
-            laborAndMaintenance: {},
-            periodExpenses: {},
-            adjustments: {},
-            workshops: [],
-            totalYield: 0,
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        const data = JSON.parse(text);
-
-        if (data.success && data.data) {
-          setSummaryData(data.data);
-        } else {
-          setSummaryData({
-            materials: { quantities: {}, costs: {}, prices: {} },
-            laborAndMaintenance: {},
-            periodExpenses: {},
-            adjustments: {},
-            workshops: [],
-            totalYield: 0,
-          });
-        }
-      } catch (error) {
-        console.error('加载数据失败:', error);
-        setSummaryData({
-          materials: { quantities: {}, costs: {}, prices: {} },
-          laborAndMaintenance: {},
-          periodExpenses: {},
-          adjustments: {},
-          workshops: [],
-          totalYield: 0,
-        });
-      } finally {
-        setIsLoading(false);
+      if (!result.success) {
+        throw new Error(result.error || '保存失败');
       }
-    };
 
-    loadData();
-  }, [selectedDate, selectedProduct]);
+      // 重新加载数据
+      await loadSalesData();
+
+      toast.success(`数据已保存！共 ${result.data?.length || 0} 条记录（旧数据已清除）`);
+    } catch (error) {
+      console.error('解析Excel失败:', error);
+      toast.error(error instanceof Error ? error.message : '解析Excel文件失败');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   // 计算小计
   const calculateSubtotal = (obj: Record<string, number>) => {
@@ -199,10 +299,10 @@ export default function AdminPage() {
 
   // 判断是否有任何数据
   const hasAnyData = () => {
-    const hasMaterials = Object.keys(summaryData.materials.quantities).length > 0;
-    const hasLabor = Object.keys(summaryData.laborAndMaintenance).length > 0;
-    const hasPeriod = Object.keys(summaryData.periodExpenses).length > 0;
-    const hasAdjustments = Object.keys(summaryData.adjustments).length > 0;
+    const hasMaterials = Object.keys(costListData.materials.quantities).length > 0;
+    const hasLabor = Object.keys(costListData.laborAndMaintenance).length > 0;
+    const hasPeriod = Object.keys(costListData.periodExpenses).length > 0;
+    const hasAdjustments = Object.keys(costListData.adjustments).length > 0;
     return hasMaterials || hasLabor || hasPeriod || hasAdjustments;
   };
 
@@ -236,6 +336,9 @@ export default function AdminPage() {
     router.push('/');
     toast.success('已退出登录');
   };
+
+  // 提取唯一物料（从成本列表数据中）
+  const uniqueProducts = ['32%液碱', '31%盐酸', '其他'];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-slate-100 dark:from-slate-950 dark:via-emerald-900 dark:to-slate-950 p-4 md:p-8">
@@ -272,6 +375,111 @@ export default function AdminPage() {
             </Button>
           </div>
         </div>
+
+        {/* 筛选组件 - Excel导入和产品/日期筛选 */}
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardContent className="py-4">
+            <div className="flex flex-wrap items-center gap-6">
+              {/* Excel导入 */}
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <Button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  variant="outline"
+                  size="sm"
+                  className="text-sm"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {isUploading ? '导入中...' : '导入Excel'}
+                </Button>
+              </div>
+              
+              {/* 产品筛选 */}
+              <div className="flex items-center gap-2">
+                <span className="text-base font-medium text-slate-700 dark:text-slate-300">产品</span>
+                <div className="flex flex-wrap gap-2">
+                  {uniqueProducts.map(product => (
+                    <Button
+                      key={product}
+                      variant={selectedProduct === product ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedProduct(product)}
+                      className={`text-base px-4 py-2 ${selectedProduct === product
+                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                        : "bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      {product}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* 日期筛选 */}
+              <div className="flex items-center gap-2">
+                <span className="text-base font-medium text-slate-700 dark:text-slate-300">日期</span>
+                <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 w-36 justify-start text-left text-sm">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.from ? format(dateRange.from, 'yyyy-MM-dd', { locale: zhCN }) : "起始日期"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.from}
+                      onSelect={(date) => {
+                        if (date) {
+                          const newRange = { ...dateRange, from: date };
+                          if (!dateRange.to || dateRange.to < date) {
+                            newRange.to = date;
+                          }
+                          setDateRange(newRange);
+                          setIsStartCalendarOpen(false);
+                        }
+                      }}
+                      locale={zhCN}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <span className="text-slate-500 text-sm">至</span>
+                <Popover open={isEndCalendarOpen} onOpenChange={setIsEndCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 w-36 justify-start text-left text-sm">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.to ? format(dateRange.to, 'yyyy-MM-dd', { locale: zhCN }) : "结束日期"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.to}
+                      onSelect={(date) => {
+                        if (date) {
+                          const newRange = { ...dateRange, to: date };
+                          if (!dateRange.from || dateRange.from > date) {
+                            newRange.from = date;
+                          }
+                          setDateRange(newRange);
+                          setIsEndCalendarOpen(false);
+                        }
+                      }}
+                      locale={zhCN}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 视图切换按钮 */}
         <div className="flex gap-2">
@@ -328,9 +536,9 @@ export default function AdminPage() {
                 </div>
                 <div className="space-y-3">
                   {MATERIAL_ITEMS.map((item) => {
-                    const quantity = summaryData.materials.quantities[item.name] || 0;
-                    const price = summaryData.materials.prices[item.name] || 0;
-                    const cost = summaryData.materials.costs[item.name] || 0;
+                    const quantity = costListData.materials.quantities[item.name] || 0;
+                    const price = costListData.materials.prices[item.name] || 0;
+                    const cost = costListData.materials.costs[item.name] || 0;
                     const isDirectCost = item.unit === '元';
 
                     return (
@@ -355,7 +563,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                     <span className="text-xl font-bold text-sky-700 dark:text-sky-400">
-                      ¥{calculateSubtotal(summaryData.materials.costs).toFixed(2)}
+                      ¥{calculateSubtotal(costListData.materials.costs).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -385,7 +593,7 @@ export default function AdminPage() {
                         {item.name}
                       </div>
                       <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right">
-                        {(summaryData.laborAndMaintenance[item.name] || 0).toFixed(2)}
+                        {(costListData.laborAndMaintenance[item.name] || 0).toFixed(2)}
                       </div>
                       <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
                         {item.unit}
@@ -397,7 +605,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                     <span className="text-xl font-bold text-amber-700 dark:text-amber-400">
-                      ¥{calculateSubtotal(summaryData.laborAndMaintenance).toFixed(2)}
+                      ¥{calculateSubtotal(costListData.laborAndMaintenance).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -427,7 +635,7 @@ export default function AdminPage() {
                         {item.name}
                       </div>
                       <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right">
-                        {(summaryData.periodExpenses[item.name] || 0).toFixed(2)}
+                        {(costListData.periodExpenses[item.name] || 0).toFixed(2)}
                       </div>
                       <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
                         {item.unit}
@@ -439,7 +647,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                     <span className="text-xl font-bold text-violet-700 dark:text-violet-400">
-                      ¥{calculateSubtotal(summaryData.periodExpenses).toFixed(2)}
+                      ¥{calculateSubtotal(costListData.periodExpenses).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -469,7 +677,7 @@ export default function AdminPage() {
                         {item.name}
                       </div>
                       <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right">
-                        {(summaryData.adjustments[item.name] || 0).toFixed(2)}
+                        {(costListData.adjustments[item.name] || 0).toFixed(2)}
                       </div>
                       <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
                         {item.unit}
@@ -481,7 +689,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                     <span className="text-xl font-bold text-red-600 dark:text-red-400">
-                      ¥{calculateSubtotal(summaryData.adjustments).toFixed(2)}
+                      ¥{calculateSubtotal(costListData.adjustments).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -498,34 +706,34 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
                     <span className="text-xl text-slate-600 dark:text-slate-400">原材料成本</span>
                     <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-                      ¥{calculateSubtotal(summaryData.materials.costs).toFixed(2)}
+                      ¥{calculateSubtotal(costListData.materials.costs).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
                     <span className="text-xl text-slate-600 dark:text-slate-400">人工与维护成本</span>
                     <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-                      ¥{calculateSubtotal(summaryData.laborAndMaintenance).toFixed(2)}
+                      ¥{calculateSubtotal(costListData.laborAndMaintenance).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
                     <span className="text-xl text-slate-600 dark:text-slate-400">期间费用</span>
                     <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-                      ¥{calculateSubtotal(summaryData.periodExpenses).toFixed(2)}
+                      ¥{calculateSubtotal(costListData.periodExpenses).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
                     <span className="text-xl text-slate-600 dark:text-slate-400">调减其他收入</span>
                     <span className="text-3xl font-bold text-red-600 dark:text-red-400">
-                      -¥{calculateSubtotal(summaryData.adjustments).toFixed(2)}
+                      -¥{calculateSubtotal(costListData.adjustments).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-4 px-6 bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-700 dark:to-emerald-800 text-white rounded-xl mt-6 shadow-md">
                     <span className="text-2xl font-bold">总成本合计</span>
                     <span className="text-4xl font-bold">
-                      ¥{(calculateSubtotal(summaryData.materials.costs) +
-                          calculateSubtotal(summaryData.laborAndMaintenance) +
-                          calculateSubtotal(summaryData.periodExpenses) -
-                          calculateSubtotal(summaryData.adjustments)).toFixed(2)}
+                      ¥{(calculateSubtotal(costListData.materials.costs) +
+                          calculateSubtotal(costListData.laborAndMaintenance) +
+                          calculateSubtotal(costListData.periodExpenses) -
+                          calculateSubtotal(costListData.adjustments)).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -537,16 +745,47 @@ export default function AdminPage() {
         )}
 
         {view === 'analysis' && (
-          <CostAnalysisView />
+          <CostAnalysisView 
+            salesData={salesData}
+            dateRange={dateRange}
+            selectedMaterial={selectedMaterial}
+            setSelectedMaterial={setSelectedMaterial}
+            setDateRange={setDateRange}
+            isStartCalendarOpen={isStartCalendarOpen}
+            setIsStartCalendarOpen={setIsStartCalendarOpen}
+            isEndCalendarOpen={isEndCalendarOpen}
+            setIsEndCalendarOpen={setIsEndCalendarOpen}
+          />
         )}
       </div>
     </div>
   );
 }
 
-// 成本分析视图组件
-function CostAnalysisView() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+// 成本分析视图组件 Props
+interface CostAnalysisViewProps {
+  salesData: SalesData[];
+  dateRange: { from: Date | undefined; to: Date | undefined };
+  selectedMaterial: string;
+  setSelectedMaterial: (material: string) => void;
+  setDateRange: (range: { from: Date | undefined; to: Date | undefined }) => void;
+  isStartCalendarOpen: boolean;
+  setIsStartCalendarOpen: (open: boolean) => void;
+  isEndCalendarOpen: boolean;
+  setIsEndCalendarOpen: (open: boolean) => void;
+}
+
+function CostAnalysisView({ 
+  salesData, 
+  dateRange, 
+  selectedMaterial, 
+  setSelectedMaterial,
+  setDateRange,
+  isStartCalendarOpen,
+  setIsStartCalendarOpen,
+  isEndCalendarOpen,
+  setIsEndCalendarOpen
+}: CostAnalysisViewProps) {
   
   // 销售数据接口
   interface SalesData {
@@ -560,20 +799,11 @@ function CostAnalysisView() {
     出库数量: number;
   }
 
-  // 状态管理
-  const [rawData, setRawData] = useState<SalesData[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState({ loaded: 0, total: 0 });
-  const today = new Date();
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: today,
-    to: today
-  });
-  const [isStartCalendarOpen, setIsStartCalendarOpen] = useState(false);
-  const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false);
-  const [selectedMaterial, setSelectedMaterial] = useState<string>('32%烧碱');
+  // 悬浮状态
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  // 使用从props传入的销售数据
+  const rawData = salesData;
 
   // 颜色配置
   const COLORS = [
@@ -581,58 +811,6 @@ function CostAnalysisView() {
     '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
     '#14b8a6', '#a855f7', '#eab308', '#22c55e', '#0ea5e9'
   ];
-
-  // 从数据库加载销售数据
-  useEffect(() => {
-    const loadAllSalesData = async () => {
-      setIsLoading(true);
-      setLoadingProgress({ loaded: 0, total: 0 });
-
-      try {
-        const pageSize = 1000;
-        let page = 0;
-        let allData: SalesData[] = [];
-        let hasMore = true;
-        let totalCount = 0;
-
-        // 分页加载所有数据
-        while (hasMore) {
-          const params = new URLSearchParams();
-          params.append('page', page.toString());
-          params.append('pageSize', pageSize.toString());
-
-          const response = await fetch(`/api/sales-data?${params.toString()}`);
-
-          if (!response.ok) {
-            throw new Error('加载数据失败');
-          }
-
-          const result = await response.json();
-
-          if (result.success && result.data) {
-            allData = [...allData, ...result.data];
-            totalCount = result.total || 0;
-            setLoadingProgress({ loaded: allData.length, total: totalCount });
-            hasMore = result.hasMore || false;
-            page++;
-          } else {
-            hasMore = false;
-          }
-        }
-
-        // 一次性设置所有数据
-        setRawData(allData);
-      } catch (error) {
-        console.error('加载销售数据失败:', error);
-      } finally {
-        setIsLoading(false);
-        setLoadingProgress({ loaded: 0, total: 0 });
-      }
-    };
-
-    // 首次加载所有数据
-    loadAllSalesData();
-  }, []); // 仅在组件加载时执行一次
 
   // 图表数据接口
   interface ChartData {
@@ -978,152 +1156,21 @@ function CostAnalysisView() {
 
   return (
     <div className="space-y-6">
-      {/* 加载进度提示 */}
-      {isLoading && (
+      {/* 数据加载提示 */}
+      {salesData.length === 0 && (
         <Card className="shadow-lg border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                  正在加载数据...
-                </span>
-              </div>
-              <span className="text-sm text-blue-600 dark:text-blue-400">
-                {loadingProgress.loaded} / {loadingProgress.total}
+          <CardContent className="py-8">
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                正在加载销售数据...
               </span>
             </div>
-            {loadingProgress.total > 0 && (
-              <div className="mt-2 w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
-                <div
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={{
-                    width: `${(loadingProgress.loaded / loadingProgress.total) * 100}%`
-                  }}
-                />
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
 
-      {/* Excel导入 - 简洁版本 */}
-      <div className="flex items-center justify-between mb-4">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,.xls"
-          onChange={handleFileUpload}
-          className="hidden"
-        />
-        <Button 
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
-          variant="outline"
-          size="sm"
-          className="text-xs"
-        >
-          <Upload className="w-3 h-3 mr-1" />
-          {isUploading ? '导入中...' : '导入Excel'}
-        </Button>
-      </div>
-
-      {/* 筛选框 - 简洁紧凑 */}
-      <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mb-4">
-        <CardContent className="py-3">
-          <div className="flex items-center gap-6">
-            {/* 日期区间筛选 */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">日期</span>
-              <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 w-24 px-2 justify-start text-left text-xs">
-                    <CalendarIcon className="mr-1.5 h-3 w-3" />
-                    {dateRange.from ? format(dateRange.from, 'MM-dd', { locale: zhCN }) : "起始"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange.from}
-                    onSelect={(date) => {
-                      if (date) {
-                        const newRange = { ...dateRange, from: date };
-                        if (!dateRange.to || dateRange.to < date) {
-                          newRange.to = date;
-                        }
-                        setDateRange(newRange);
-                        setIsStartCalendarOpen(false);
-                      }
-                    }}
-                    locale={zhCN}
-                  />
-                </PopoverContent>
-              </Popover>
-              <span className="text-slate-400 text-xs">至</span>
-              <Popover open={isEndCalendarOpen} onOpenChange={setIsEndCalendarOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 w-24 px-2 justify-start text-left text-xs">
-                    <CalendarIcon className="mr-1.5 h-3 w-3" />
-                    {dateRange.to ? format(dateRange.to, 'MM-dd', { locale: zhCN }) : "结束"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange.to}
-                    onSelect={(date) => {
-                      if (date) {
-                        const newRange = { ...dateRange, to: date };
-                        if (!dateRange.from || dateRange.from > date) {
-                          newRange.from = date;
-                        }
-                        setDateRange(newRange);
-                        setIsEndCalendarOpen(false);
-                      }
-                    }}
-                    locale={zhCN}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* 物料筛选 */}
-            <div className="flex items-center gap-2 flex-1">
-              <span className="text-xs text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">物料</span>
-              <div className="flex flex-wrap gap-1.5">
-                <Button
-                  variant={!selectedMaterial ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedMaterial('')}
-                  className={`h-7 px-3 text-xs ${!selectedMaterial
-                    ? "bg-blue-600 hover:bg-blue-700 text-white"
-                    : "bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  全部
-                </Button>
-                {uniqueMaterials.map(material => (
-                  <Button
-                    key={material}
-                    variant={selectedMaterial === material ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedMaterial(material)}
-                    className={`h-7 px-3 text-xs ${selectedMaterial === material
-                      ? "bg-blue-600 hover:bg-blue-700 text-white"
-                      : "bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    {material}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 第二部分：饼图 */}
+      {/* 饼图 */}
       <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mb-4">
         <CardContent className="pt-6">
           {chartData.length === 0 ? (
