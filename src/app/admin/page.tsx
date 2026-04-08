@@ -605,6 +605,8 @@ function CostAnalysisView() {
   // 状态管理
   const [rawData, setRawData] = useState<SalesData[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState({ loaded: 0, total: 0 });
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
     to: undefined
@@ -623,54 +625,54 @@ function CostAnalysisView() {
 
   // 从数据库加载销售数据
   useEffect(() => {
-    const loadSalesDataFromDB = async () => {
+    const loadAllSalesData = async () => {
+      setIsLoading(true);
+      setLoadingProgress({ loaded: 0, total: 0 });
+
       try {
-        const params = new URLSearchParams();
-        if (dateRange.from) {
-          params.append('startDate', dateRange.from.toISOString().split('T')[0]);
-        }
-        if (dateRange.to) {
-          params.append('endDate', dateRange.to.toISOString().split('T')[0]);
-        }
-        if (selectedMaterial) {
-          params.append('materialName', selectedMaterial);
+        const pageSize = 1000;
+        let page = 0;
+        let allData: SalesData[] = [];
+        let hasMore = true;
+        let totalCount = 0;
+
+        // 分页加载所有数据
+        while (hasMore) {
+          const params = new URLSearchParams();
+          params.append('page', page.toString());
+          params.append('pageSize', pageSize.toString());
+
+          const response = await fetch(`/api/sales-data?${params.toString()}`);
+
+          if (!response.ok) {
+            throw new Error('加载数据失败');
+          }
+
+          const result = await response.json();
+
+          if (result.success && result.data) {
+            allData = [...allData, ...result.data];
+            totalCount = result.total || 0;
+            setLoadingProgress({ loaded: allData.length, total: totalCount });
+            hasMore = result.hasMore || false;
+            page++;
+          } else {
+            hasMore = false;
+          }
         }
 
-        const response = await fetch(`/api/sales-data?${params.toString()}`);
-
-        if (!response.ok) {
-          throw new Error('加载数据失败');
-        }
-
-        const result = await response.json();
-
-        if (result.success && result.data) {
-          setRawData(result.data as SalesData[]);
-        }
+        // 一次性设置所有数据
+        setRawData(allData);
       } catch (error) {
         console.error('加载销售数据失败:', error);
-        // 不显示错误，首次加载可能没有数据
-      }
-    };
-
-    // 仅在首次加载时获取所有数据（不传筛选条件）
-    const loadInitialData = async () => {
-      try {
-        const response = await fetch('/api/sales-data');
-        if (!response.ok) {
-          throw new Error('加载数据失败');
-        }
-        const result = await response.json();
-        if (result.success && result.data) {
-          setRawData(result.data as SalesData[]);
-        }
-      } catch (error) {
-        console.error('加载销售数据失败:', error);
+      } finally {
+        setIsLoading(false);
+        setLoadingProgress({ loaded: 0, total: 0 });
       }
     };
 
     // 首次加载所有数据
-    loadInitialData();
+    loadAllSalesData();
   }, []); // 仅在组件加载时执行一次
 
   // 图表数据接口
@@ -717,23 +719,56 @@ function CostAnalysisView() {
         出库数量: parseFloat(String(row['出库数量']).replace(/,/g, '')) || 0
       })).filter(item => item.单据日期 && item.物料名称);
 
-      // 4. 保存到数据库
-      const response = await fetch('/api/sales-data', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ salesData }),
-      });
+      // 4. 保存到数据库（分批上传）
+      const MAX_BATCH_SIZE = 1000;
+      let totalSaved = 0;
 
-      const result = await response.json();
+      if (salesData.length <= MAX_BATCH_SIZE) {
+        // 单批次上传
+        const response = await fetch('/api/sales-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ salesData }),
+        });
 
-      if (!result.success) {
-        throw new Error(result.error || '保存失败');
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || '保存失败');
+        }
+
+        totalSaved = salesData.length;
+      } else {
+        // 分批上传
+        const batches = Math.ceil(salesData.length / MAX_BATCH_SIZE);
+
+        for (let i = 0; i < batches; i++) {
+          const start = i * MAX_BATCH_SIZE;
+          const end = Math.min(start + MAX_BATCH_SIZE, salesData.length);
+          const batch = salesData.slice(start, end);
+
+          const response = await fetch('/api/sales-data', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ salesData: batch }),
+          });
+
+          const result = await response.json();
+
+          if (!result.success) {
+            throw new Error(`第 ${i + 1} 批保存失败: ${result.error || '保存失败'}`);
+          }
+
+          totalSaved += result.data?.length || 0;
+        }
       }
 
       // 5. 重新加载数据
-      const reloadResponse = await fetch('/api/sales-data');
+      const reloadResponse = await fetch('/api/sales-data?page=0&pageSize=1000');
       const reloadResult = await reloadResponse.json();
       if (reloadResult.success && reloadResult.data) {
         setRawData(reloadResult.data as SalesData[]);
@@ -746,7 +781,7 @@ function CostAnalysisView() {
         setDateRange({ from: new Date(latestDate), to: new Date(latestDate) });
       }
 
-      toast.success(result.message || `数据已保存！共 ${salesData.length} 条记录`);
+      toast.success(`数据已保存！共 ${totalSaved} 条记录`);
     } catch (error) {
       console.error('解析Excel失败:', error);
       toast.error(error instanceof Error ? error.message : '解析Excel文件失败');
@@ -953,6 +988,35 @@ function CostAnalysisView() {
 
   return (
     <div className="space-y-6">
+      {/* 加载进度提示 */}
+      {isLoading && (
+        <Card className="shadow-lg border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  正在加载数据...
+                </span>
+              </div>
+              <span className="text-sm text-blue-600 dark:text-blue-400">
+                {loadingProgress.loaded} / {loadingProgress.total}
+              </span>
+            </div>
+            {loadingProgress.total > 0 && (
+              <div className="mt-2 w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
+                <div
+                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${(loadingProgress.loaded / loadingProgress.total) * 100}%`
+                  }}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* 第一部分：Excel导入和筛选框 */}
       <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
         <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">

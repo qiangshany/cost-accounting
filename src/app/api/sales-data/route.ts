@@ -7,11 +7,13 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const materialName = searchParams.get('materialName');
+    const page = parseInt(searchParams.get('page') || '0');
+    const pageSize = parseInt(searchParams.get('pageSize') || '1000');
 
     const client = getSupabaseClient();
 
     // 构建查询条件
-    let query = client.from('sales_data').select('*').order('document_date', { ascending: true });
+    let query = client.from('sales_data').select('*', { count: 'exact' });
 
     if (startDate) {
       query = query.gte('document_date', startDate);
@@ -25,7 +27,12 @@ export async function GET(request: NextRequest) {
       query = query.eq('material_name', materialName);
     }
 
-    const { data, error } = await query;
+    // 添加排序和分页
+    query = query
+      .order('document_date', { ascending: true })
+      .range(page * pageSize, page * pageSize + pageSize - 1);
+
+    const { data, error, count } = await query;
 
     if (error) {
       throw new Error(`数据库查询失败: ${error.message}`);
@@ -46,6 +53,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: formattedData,
+      total: count || 0,
+      page,
+      pageSize,
+      hasMore: count ? (page + 1) * pageSize < count : false,
     });
   } catch (error) {
     console.error('查询销售数据错误:', error);
@@ -54,6 +65,7 @@ export async function GET(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : '查询失败',
         data: [],
+        total: 0,
       },
       { status: 500 }
     );
@@ -69,6 +81,18 @@ export async function POST(request: NextRequest) {
     if (!salesData || !Array.isArray(salesData) || salesData.length === 0) {
       return NextResponse.json(
         { success: false, error: '缺少销售数据' },
+        { status: 400 }
+      );
+    }
+
+    // 限制单次插入数量，避免超时
+    const MAX_BATCH_SIZE = 1000;
+    if (salesData.length > MAX_BATCH_SIZE) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `单次最多只能插入 ${MAX_BATCH_SIZE} 条数据，当前有 ${salesData.length} 条`,
+        },
         { status: 400 }
       );
     }
