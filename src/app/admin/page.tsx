@@ -99,6 +99,18 @@ export default function AdminPage() {
     cost32Percent: 0,
   });
   
+  // 成本分析视图使用的成本数据（日期往前推一天）
+  const [analysisCostData, setAnalysisCostData] = useState<SummaryData>({
+    materials: { quantities: {}, costs: {}, prices: {} },
+    laborAndMaintenance: {},
+    periodExpenses: {},
+    adjustments: {},
+    workshops: [],
+    totalYield: 0,
+    totalCost: 0,
+    cost32Percent: 0,
+  });
+  
   // 销售数据状态（供成本分析视图使用）
   const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [selectedMaterial, setSelectedMaterial] = useState<string>('32%烧碱');
@@ -210,6 +222,96 @@ export default function AdminPage() {
     }
   };
   
+  // 加载成本分析的成本数据
+  // 规则：使用销售日期的前一天进行计算
+  // 例如：销售日期 4.5-4.8，使用成本日期 4.4-4.7
+  const loadAnalysisCostData = async () => {
+    if (!dateRange.from || !dateRange.to) {
+      return;
+    }
+
+    setIsLoading(true);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const salesToDate = new Date(dateRange.to);
+    salesToDate.setHours(0, 0, 0, 0);
+    
+    // 成本数据的日期区间是销售日期区间的前一天
+    let queryFromDate = new Date(dateRange.from);
+    queryFromDate.setDate(queryFromDate.getDate() - 1);
+    
+    let queryEndDate = new Date(dateRange.to);
+    queryEndDate.setDate(queryEndDate.getDate() - 1);
+    
+    // 如果结束日期是今天，成本结束日期改为昨天（因为今天的成本出不来）
+    if (salesToDate.getTime() === today.getTime()) {
+      queryEndDate = new Date(today);
+      queryEndDate.setDate(queryEndDate.getDate() - 1);
+    }
+    
+    // 如果查询结束日期早于开始日期，直接返回空数据
+    if (queryEndDate < queryFromDate) {
+      setAnalysisCostData({
+        materials: { quantities: {}, costs: {}, prices: {} },
+        laborAndMaintenance: {},
+        periodExpenses: {},
+        adjustments: {},
+        workshops: [],
+        totalYield: 0,
+        totalCost: 0,
+        cost32Percent: 0,
+      });
+      setIsLoading(false);
+      return;
+    }
+    
+    const fromDateStr = format(queryFromDate, 'yyyy-MM-dd');
+    const toDateStr = format(queryEndDate, 'yyyy-MM-dd');
+    
+    try {
+      const response = await fetch(
+        `/api/admin-cost-list?startDate=${fromDateStr}&endDate=${toDateStr}&product=${selectedMaterial}`
+      );
+
+      if (!response.ok) {
+        throw new Error('加载数据失败');
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        setAnalysisCostData(data.data);
+      } else {
+        setAnalysisCostData({
+          materials: { quantities: {}, costs: {}, prices: {} },
+          laborAndMaintenance: {},
+          periodExpenses: {},
+          adjustments: {},
+          workshops: [],
+          totalYield: 0,
+          totalCost: 0,
+          cost32Percent: 0,
+        });
+      }
+    } catch (error) {
+      console.error('加载成本分析成本数据失败:', error);
+      setAnalysisCostData({
+        materials: { quantities: {}, costs: {}, prices: {} },
+        laborAndMaintenance: {},
+        periodExpenses: {},
+        adjustments: {},
+        workshops: [],
+        totalYield: 0,
+        totalCost: 0,
+        cost32Percent: 0,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   // 加载销售数据
   const loadSalesData = async () => {
     setIsLoading(true);
@@ -257,12 +359,16 @@ export default function AdminPage() {
     }
   }, [dateRange, selectedMaterial, view]);
   
-  // 当切换到成本分析视图时，加载销售数据
+  // 当切换到成本分析视图时，加载销售数据和成本数据
   useEffect(() => {
-    if (view === 'analysis' && salesData.length === 0) {
-      loadSalesData();
+    if (view === 'analysis') {
+      if (salesData.length === 0) {
+        loadSalesData();
+      }
+      // 加载成本分析的成本数据（使用前一天）
+      loadAnalysisCostData();
     }
-  }, [view, salesData.length]);
+  }, [view, dateRange, selectedMaterial]);
 
   // 检查登录状态和角色
   useEffect(() => {
@@ -845,7 +951,7 @@ export default function AdminPage() {
             salesData={salesData}
             dateRange={dateRange}
             selectedMaterial={selectedMaterial}
-            costListData={costListData}
+            costListData={analysisCostData}
           />
         )}
       </div>
