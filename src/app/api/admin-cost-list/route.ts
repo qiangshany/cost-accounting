@@ -50,18 +50,20 @@ export async function GET(request: NextRequest) {
     const DIRECT_COST_ITEMS = ['化水药品费用', '锅炉清焦剂等', '脱硫、铲硝及输煤费'];
 
     // 2. 获取原材料数据
-    // 原材料成本 = 数量 × 单价
-    // 单日：使用当日采购单价
-    // 区间：
-    //   - 单位为元的项目：直接相加数量
-    //   - 其他物料：数量相加，成本 = Σ(每天数量 × 每天单价)，单价 = 总成本 / 总数量（加权均价）
+    // 规则：
+    // - 当某天没有产量数据时，跳过该天的计算
+    // - 只有当天有产量数据时，才累加该天的原材料数据
+    // - 单日：使用当日采购单价
+    // - 区间：
+    //   - 单位为元的项目：直接相加有产量日期的数量
+    //   - 其他物料：数量相加，成本 = Σ(有产量日期的数量 × 单价)，单价 = 总成本 / 总数量（加权均价）
 
     // 获取原材料数据（数量来自material_costs，单价来自purchase_prices）
     const materialQuantities: Record<string, number> = {};
     const materialCosts: Record<string, number> = {};
     const materialPrices: Record<string, number> = {};
     
-    // 获取产量数据（用于判断是否有数据）
+    // 获取产量数据（用于判断哪些日期有数据）
     const yieldResponse = await client
       .from('production_yields')
       .select('*')
@@ -69,9 +71,21 @@ export async function GET(request: NextRequest) {
       .gte('report_date', startDate)
       .lte('report_date', endDate);
 
-    if (yieldResponse.data && yieldResponse.data.length > 0) {
+    // 构建有数据的日期集合
+    const datesWithYield = new Set<string>();
+    if (yieldResponse.data) {
+      for (const item of yieldResponse.data) {
+        const dateStr = new Date(item.report_date).toISOString().split('T')[0];
+        datesWithYield.add(dateStr);
+      }
+    }
+
+    // 只有有产量数据的日期才进行计算
+    const validDates = dates.filter(date => datesWithYield.has(date));
+
+    if (validDates.length > 0) {
       // 按日期获取原材料数量和单价，计算总成本
-      for (const date of dates) {
+      for (const date of validDates) {
         const quantityResponse = await client
           .from('material_costs')
           .select('*')
@@ -101,9 +115,9 @@ export async function GET(request: NextRequest) {
           materialPrices[name] = 1; // 单价显示为1元（因为数量就是金额）
         } else {
           // 非直接成本项目：计算加权均价
-          let totalCost = 0; // 总成本 = Σ(数量 × 单价)
+          let totalCost = 0; // 总成本 = Σ(有产量日期的数量 × 单价)
           
-          for (const date of dates) {
+          for (const date of validDates) {
             // 获取该日期的数量
             const quantityResponse = await client
               .from('material_costs')
@@ -136,85 +150,89 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 3. 获取人工与维护成本
+    // 3. 获取人工与维护成本（只获取有产量日期的数据）
     const laborAndMaintenance: Record<string, number> = {};
     
-    const laborResponse = await client
-      .from('labor_maintenance_costs')
-      .select('*')
-      .eq('product', product)
-      .gte('report_date', startDate)
-      .lte('report_date', endDate);
+    for (const date of validDates) {
+      const laborResponse = await client
+        .from('labor_maintenance_costs')
+        .select('*')
+        .eq('product', product)
+        .eq('report_date', date);
 
-    if (laborResponse.data) {
-      for (const item of laborResponse.data) {
-        const name = item.cost_item_name;
-        const amount = parseFloat(item.amount) || 0;
-        
-        if (!laborAndMaintenance[name]) {
-          laborAndMaintenance[name] = 0;
+      if (laborResponse.data) {
+        for (const item of laborResponse.data) {
+          const name = item.cost_item_name;
+          const amount = parseFloat(item.amount) || 0;
+          
+          if (!laborAndMaintenance[name]) {
+            laborAndMaintenance[name] = 0;
+          }
+          laborAndMaintenance[name] += amount;
         }
-        laborAndMaintenance[name] += amount;
       }
     }
 
-    // 4. 获取期间费用
+    // 4. 获取期间费用（只获取有产量日期的数据）
     const periodExpenses: Record<string, number> = {};
     
-    const periodResponse = await client
-      .from('period_expenses')
-      .select('*')
-      .eq('product', product)
-      .gte('report_date', startDate)
-      .lte('report_date', endDate);
+    for (const date of validDates) {
+      const periodResponse = await client
+        .from('period_expenses')
+        .select('*')
+        .eq('product', product)
+        .eq('report_date', date);
 
-    if (periodResponse.data) {
-      for (const item of periodResponse.data) {
-        const name = item.expense_item_name;
-        const amount = parseFloat(item.amount) || 0;
-        
-        if (!periodExpenses[name]) {
-          periodExpenses[name] = 0;
+      if (periodResponse.data) {
+        for (const item of periodResponse.data) {
+          const name = item.expense_item_name;
+          const amount = parseFloat(item.amount) || 0;
+          
+          if (!periodExpenses[name]) {
+            periodExpenses[name] = 0;
+          }
+          periodExpenses[name] += amount;
         }
-        periodExpenses[name] += amount;
       }
     }
 
-    // 5. 获取调整项
+    // 5. 获取调整项（只获取有产量日期的数据）
     const adjustments: Record<string, number> = {};
     
-    const adjustmentResponse = await client
-      .from('adjustments')
-      .select('*')
-      .eq('product', product)
-      .gte('report_date', startDate)
-      .lte('report_date', endDate);
+    for (const date of validDates) {
+      const adjustmentResponse = await client
+        .from('adjustments')
+        .select('*')
+        .eq('product', product)
+        .eq('report_date', date);
 
-    if (adjustmentResponse.data) {
-      for (const item of adjustmentResponse.data) {
-        const name = item.adjustment_name;
-        const amount = parseFloat(item.amount) || 0;
-        
-        if (!adjustments[name]) {
-          adjustments[name] = 0;
+      if (adjustmentResponse.data) {
+        for (const item of adjustmentResponse.data) {
+          const name = item.adjustment_name;
+          const amount = parseFloat(item.amount) || 0;
+          
+          if (!adjustments[name]) {
+            adjustments[name] = 0;
+          }
+          adjustments[name] += amount;
         }
-        adjustments[name] += amount;
       }
     }
 
-    // 6. 获取车间列表
+    // 6. 获取车间列表（只获取有产量日期的数据）
     const workshopSet = new Set<string>();
     
-    const workshopResponse = await client
-      .from('labor_maintenance_costs')
-      .select('workshop')
-      .eq('product', product)
-      .gte('report_date', startDate)
-      .lte('report_date', endDate);
+    for (const date of validDates) {
+      const workshopResponse = await client
+        .from('labor_maintenance_costs')
+        .select('workshop')
+        .eq('product', product)
+        .eq('report_date', date);
 
-    if (workshopResponse.data) {
-      for (const item of workshopResponse.data) {
-        workshopSet.add(item.workshop);
+      if (workshopResponse.data) {
+        for (const item of workshopResponse.data) {
+          workshopSet.add(item.workshop);
+        }
       }
     }
 
