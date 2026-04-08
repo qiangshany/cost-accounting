@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -621,6 +621,58 @@ function CostAnalysisView() {
     '#14b8a6', '#a855f7', '#eab308', '#22c55e', '#0ea5e9'
   ];
 
+  // 从数据库加载销售数据
+  useEffect(() => {
+    const loadSalesDataFromDB = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (dateRange.from) {
+          params.append('startDate', dateRange.from.toISOString().split('T')[0]);
+        }
+        if (dateRange.to) {
+          params.append('endDate', dateRange.to.toISOString().split('T')[0]);
+        }
+        if (selectedMaterial) {
+          params.append('materialName', selectedMaterial);
+        }
+
+        const response = await fetch(`/api/sales-data?${params.toString()}`);
+
+        if (!response.ok) {
+          throw new Error('加载数据失败');
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          setRawData(result.data as SalesData[]);
+        }
+      } catch (error) {
+        console.error('加载销售数据失败:', error);
+        // 不显示错误，首次加载可能没有数据
+      }
+    };
+
+    // 仅在首次加载时获取所有数据（不传筛选条件）
+    const loadInitialData = async () => {
+      try {
+        const response = await fetch('/api/sales-data');
+        if (!response.ok) {
+          throw new Error('加载数据失败');
+        }
+        const result = await response.json();
+        if (result.success && result.data) {
+          setRawData(result.data as SalesData[]);
+        }
+      } catch (error) {
+        console.error('加载销售数据失败:', error);
+      }
+    };
+
+    // 首次加载所有数据
+    loadInitialData();
+  }, []); // 仅在组件加载时执行一次
+
   // 图表数据接口
   interface ChartData {
     name: string;
@@ -649,10 +701,10 @@ function CostAnalysisView() {
       const workbook = XLSX.read(data, { type: 'array' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      
+
       // 2. 转换为JSON
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false }) as Record<string, string>[];
-      
+
       // 3. 映射数据格式
       const salesData: SalesData[] = jsonData.map(row => ({
         单据日期: row['单据日期'] || '',
@@ -665,20 +717,39 @@ function CostAnalysisView() {
         出库数量: parseFloat(String(row['出库数量']).replace(/,/g, '')) || 0
       })).filter(item => item.单据日期 && item.物料名称);
 
-      // 4. 保存数据
-      setRawData(salesData);
-      
-      // 5. 自动设置默认日期（使用最晚日期）
+      // 4. 保存到数据库
+      const response = await fetch('/api/sales-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ salesData }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || '保存失败');
+      }
+
+      // 5. 重新加载数据
+      const reloadResponse = await fetch('/api/sales-data');
+      const reloadResult = await reloadResponse.json();
+      if (reloadResult.success && reloadResult.data) {
+        setRawData(reloadResult.data as SalesData[]);
+      }
+
+      // 6. 自动设置默认日期（使用最晚日期）
       const dates = salesData.map(item => item.单据日期).filter(Boolean);
       const latestDate = [...new Set(dates)].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
       if (latestDate) {
         setDateRange({ from: new Date(latestDate), to: new Date(latestDate) });
       }
-      
-      toast.success(`数据已保存！共 ${salesData.length} 条记录`);
+
+      toast.success(result.message || `数据已保存！共 ${salesData.length} 条记录`);
     } catch (error) {
       console.error('解析Excel失败:', error);
-      toast.error('解析Excel文件失败');
+      toast.error(error instanceof Error ? error.message : '解析Excel文件失败');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
