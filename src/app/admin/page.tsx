@@ -664,6 +664,32 @@ function CostAnalysisView({ totalCost, totalYield, selectedProduct }: { totalCos
     }
   };
 
+  // 计算销售统计
+  const salesStats = React.useMemo(() => {
+    if (salesData.length === 0) {
+      return {
+        totalSales: 0,
+        totalQuantity: 0,
+        avgPrice: 0,
+        customerCount: 0,
+        materialCount: 0
+      };
+    }
+    
+    const totalSales = salesData.reduce((sum, item) => sum + item.价税合计, 0);
+    const totalQuantity = salesData.reduce((sum, item) => sum + item.销售计划数量, 0);
+    const customers = new Set(salesData.map(item => item.客户));
+    const materials = new Set(salesData.map(item => item.物料名称));
+    
+    return {
+      totalSales,
+      totalQuantity,
+      avgPrice: totalQuantity > 0 ? totalSales / totalQuantity : 0,
+      customerCount: customers.size,
+      materialCount: materials.size
+    };
+  }, [salesData]);
+
   // 计算销售均价（32%烧碱）
   const alkali32SalesData = salesData.filter(item => 
     item.物料名称.includes('32%') || item.物料名称.includes('烧碱')
@@ -679,155 +705,369 @@ function CostAnalysisView({ totalCost, totalYield, selectedProduct }: { totalCos
   const grossProfitPerTon = avgSalesPrice - alkaliCostPerTon;
   const grossProfitMargin = avgSalesPrice > 0 ? (grossProfitPerTon / avgSalesPrice) * 100 : 0;
 
+  // 客户销售排行
+  const customerRankings = React.useMemo(() => {
+    const customerMap = new Map<string, { quantity: number; amount: number }>();
+    
+    salesData.forEach(item => {
+      if (!customerMap.has(item.客户)) {
+        customerMap.set(item.客户, { quantity: 0, amount: 0 });
+      }
+      const data = customerMap.get(item.客户)!;
+      data.quantity += item.销售计划数量;
+      data.amount += item.价税合计;
+    });
+    
+    return Array.from(customerMap.entries())
+      .map(([customer, data]) => ({
+        customer,
+        quantity: data.quantity,
+        amount: data.amount,
+        avgPrice: data.quantity > 0 ? data.amount / data.quantity : 0
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 10);
+  }, [salesData]);
+
+  // 物料销售分析
+  const materialAnalysis = React.useMemo(() => {
+    const materialMap = new Map<string, { quantity: number; amount: number }>();
+    
+    salesData.forEach(item => {
+      if (!materialMap.has(item.物料名称)) {
+        materialMap.set(item.物料名称, { quantity: 0, amount: 0 });
+      }
+      const data = materialMap.get(item.物料名称)!;
+      data.quantity += item.销售计划数量;
+      data.amount += item.价税合计;
+    });
+    
+    return Array.from(materialMap.entries())
+      .map(([material, data]) => ({
+        material,
+        quantity: data.quantity,
+        amount: data.amount,
+        avgPrice: data.quantity > 0 ? data.amount / data.quantity : 0
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [salesData]);
+
   return (
     <div className="space-y-6">
-      {/* 成本和毛利汇总 */}
-      <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-blue-950/30 dark:via-slate-900 dark:to-indigo-950/30">
-        <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
-          <CardTitle className="text-xl text-center text-slate-800 dark:text-slate-200">
-            32%烧碱成本与毛利分析
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">总成本</div>
-                <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">
-                  ¥{totalCost.toFixed(2)}
-                </div>
-              </div>
-              <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">碱产量</div>
-                <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">
-                  {totalYield.toFixed(2)} 吨
-                </div>
-              </div>
-              <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">32%烧碱吨成本</div>
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  ¥{alkaliCostPerTon.toFixed(2)}
-                </div>
-              </div>
-              <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">销售均价</div>
-                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                  ¥{avgSalesPrice.toFixed(2)}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 bg-gradient-to-r from-purple-600 to-purple-700 dark:from-purple-700 dark:to-purple-800 text-white rounded-xl shadow-md">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-purple-100 text-sm mb-1">吨毛利</div>
-                  <div className="text-4xl font-bold">
-                    ¥{grossProfitPerTon.toFixed(2)}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-purple-100 text-sm mb-1">毛利率</div>
-                  <div className="text-2xl font-bold">
-                    {grossProfitMargin.toFixed(2)}%
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* 销售数据导入 */}
       <Card className="shadow-lg border-slate-200 dark:border-slate-800">
         <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
-          <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
-            销售数据管理
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4 mb-4">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
-              disabled={isUploading}
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  上传中...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4 mr-2" />
-                  导入Excel
-                </>
-              )}
-            </Button>
-            {salesData.length > 0 && (
-              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                <span className="inline-flex items-center justify-center w-5 h-5 bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 rounded-full text-xs font-bold">
-                  ✓
-                </span>
-                已加载 {salesData.length} 条数据
-              </div>
-            )}
-          </div>
-
-          {isLoading ? (
-            <div className="text-center py-8">
-              <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-blue-600" />
-              <p className="text-slate-600 dark:text-slate-400">加载数据中...</p>
-            </div>
-          ) : salesData.length === 0 ? (
-            <div className="text-center py-8">
-              <FileSpreadsheet className="w-16 h-16 mx-auto mb-4 opacity-30 text-slate-400" />
-              <p className="text-lg mb-2 text-slate-600 dark:text-slate-400">暂无销售数据</p>
-              <p className="text-sm text-slate-500 dark:text-slate-500">请先上传Excel文件</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">单据日期</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">客户</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">物料名称</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">销售数量</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">价税合计</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">均价</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {salesData.slice(0, 20).map((item, index) => (
-                    <tr key={index} className="border-b border-slate-100 dark:border-slate-800">
-                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{item.单据日期}</td>
-                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{item.客户}</td>
-                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{item.物料名称}</td>
-                      <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">{item.销售计划数量.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">¥{item.价税合计.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">
-                        {item.销售计划数量 > 0 ? `¥${(item.价税合计 / item.销售计划数量).toFixed(2)}` : '¥0.00'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {salesData.length > 20 && (
-                <div className="text-center py-3 text-sm text-slate-500 dark:text-slate-400">
-                  显示前20条，共{salesData.length}条数据
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
+              销售数据分析
+            </CardTitle>
+            <div className="flex items-center gap-3">
+              {salesData.length > 0 && (
+                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                  <span className="inline-flex items-center justify-center w-5 h-5 bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 rounded-full text-xs font-bold">
+                    ✓
+                  </span>
+                  已加载 {salesData.length} 条数据
                 </div>
               )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    上传中...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    导入Excel
+                  </>
+                )}
+              </Button>
             </div>
-          )}
-        </CardContent>
+          </div>
+        </CardHeader>
       </Card>
+
+      {isLoading ? (
+        <div className="text-center py-16">
+          <Loader2 className="w-12 h-12 mx-auto mb-4 animate-spin text-blue-600" />
+          <p className="text-slate-600 dark:text-slate-400">加载数据中...</p>
+        </div>
+      ) : salesData.length === 0 ? (
+        <Card className="shadow-lg border-slate-200 dark:border-slate-800">
+          <CardContent className="py-16">
+            <div className="text-center">
+              <FileSpreadsheet className="w-20 h-20 mx-auto mb-6 opacity-30 text-slate-400" />
+              <p className="text-xl mb-2 text-slate-600 dark:text-slate-400">暂无销售数据</p>
+              <p className="text-sm text-slate-500 dark:text-slate-500">请点击右上角"导入Excel"按钮上传销售数据文件</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* 销售统计卡片 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="shadow-md border-slate-200 dark:border-slate-800">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">总销售额</p>
+                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                      ¥{salesStats.totalSales.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-md border-slate-200 dark:border-slate-800">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">总销量</p>
+                    <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                      {salesStats.totalQuantity.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900 rounded-lg flex items-center justify-center">
+                    <Factory className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-md border-slate-200 dark:border-slate-800">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">平均售价</p>
+                    <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                      ¥{salesStats.avgPrice.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                    <Calculator className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-md border-slate-200 dark:border-slate-800">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">客户数量</p>
+                    <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                      {salesStats.customerCount}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
+                    <List className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* 成本与毛利分析 */}
+          <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-blue-950/30 dark:via-slate-900 dark:to-indigo-950/30">
+            <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
+              <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
+                32%烧碱成本与毛利分析
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">总成本</div>
+                    <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">
+                      ¥{totalCost.toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">碱产量</div>
+                    <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">
+                      {totalYield.toFixed(2)} 吨
+                    </div>
+                  </div>
+                  <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">32%烧碱吨成本</div>
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      ¥{alkaliCostPerTon.toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">销售均价</div>
+                    <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                      ¥{avgSalesPrice.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 bg-gradient-to-r from-purple-600 to-purple-700 dark:from-purple-700 dark:to-purple-800 text-white rounded-xl shadow-md">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-purple-100 text-sm mb-1">吨毛利</div>
+                      <div className="text-4xl font-bold">
+                        ¥{grossProfitPerTon.toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-purple-100 text-sm mb-1">毛利率</div>
+                      <div className="text-2xl font-bold">
+                        {grossProfitMargin.toFixed(2)}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 客户销售排行 */}
+          <Card className="shadow-lg border-slate-200 dark:border-slate-800">
+            <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
+              <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
+                客户销售排行（TOP 10）
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-700">
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">排名</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">客户</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">销售数量</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">销售金额</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">平均售价</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customerRankings.map((item, index) => (
+                      <tr key={index} className="border-b border-slate-100 dark:border-slate-800">
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                            index === 0 ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-400' :
+                            index === 1 ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' :
+                            index === 2 ? 'bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400' :
+                            'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                          }`}>
+                            {index + 1}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{item.customer}</td>
+                        <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">{item.quantity.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">¥{item.amount.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">¥{item.avgPrice.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 物料销售分析 */}
+          <Card className="shadow-lg border-slate-200 dark:border-slate-800">
+            <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
+              <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
+                物料销售分析
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-700">
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">物料名称</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">销售数量</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">销售金额</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">平均售价</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">占比</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {materialAnalysis.map((item, index) => {
+                      const percentage = salesStats.totalSales > 0 ? (item.amount / salesStats.totalSales) * 100 : 0;
+                      return (
+                        <tr key={index} className="border-b border-slate-100 dark:border-slate-800">
+                          <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{item.material}</td>
+                          <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">{item.quantity.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">¥{item.amount.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">¥{item.avgPrice.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">{percentage.toFixed(2)}%</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 销售数据明细 */}
+          <Card className="shadow-lg border-slate-200 dark:border-slate-800">
+            <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
+              <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
+                销售数据明细
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-700">
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">单据日期</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">客户</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">业务员</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">物料名称</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">销售数量</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">含税净价</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">价税合计</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">出库数量</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {salesData.slice(0, 50).map((item, index) => (
+                      <tr key={index} className="border-b border-slate-100 dark:border-slate-800">
+                        <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{item.单据日期}</td>
+                        <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{item.客户}</td>
+                        <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{item.业务员}</td>
+                        <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{item.物料名称}</td>
+                        <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">{item.销售计划数量.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">¥{item.含税净价.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">¥{item.价税合计.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-sm text-right text-slate-600 dark:text-slate-400">{item.出库数量.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {salesData.length > 50 && (
+                  <div className="text-center py-3 text-sm text-slate-500 dark:text-slate-400">
+                    显示前50条，共{salesData.length}条数据
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
