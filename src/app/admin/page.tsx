@@ -94,9 +94,8 @@ export default function AdminPage() {
   }, [router]);
 
   useEffect(() => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    setSelectedDate(yesterday.toISOString().split('T')[0]);
+    const today = new Date().toISOString().split('T')[0];
+    setSelectedDate(today);
   }, []);
 
   // 加载数据
@@ -117,9 +116,15 @@ export default function AdminPage() {
         workshops: [],
         totalYield: 0,
       });
+      
+      // 将日期减去一天，加载前一天的数据
+      const queryDate = new Date(selectedDate);
+      queryDate.setDate(queryDate.getDate() - 1);
+      const queryDateStr = queryDate.toISOString().split('T')[0];
+      
       try {
         const response = await fetch(
-          `/api/admin-summary?date=${selectedDate}&product=${selectedProduct}`
+          `/api/admin-summary?date=${queryDateStr}&product=${selectedProduct}`
         );
 
         if (!response.ok) {
@@ -289,6 +294,15 @@ export default function AdminPage() {
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className="h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
                 />
+                {selectedDate && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    查看前一天的成本数据（{selectedDate} 查看 {(() => {
+                      const prevDate = new Date(selectedDate);
+                      prevDate.setDate(prevDate.getDate() - 1);
+                      return prevDate.toISOString().split('T')[0];
+                    })()}）
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
