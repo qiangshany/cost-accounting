@@ -174,7 +174,7 @@ interface PurchasePriceItem {
               <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">
                 采购部填报
               </h1>
-              <p className="text-slate-500 dark:text-slate-400">原材料采购单价</p>
+              <p className="text-slate-500 dark:text-slate-400">最近一次原料采购单价</p>
             </div>
           </div>
           <Button
@@ -212,7 +212,7 @@ interface PurchasePriceItem {
               <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
                 <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              原材料采购单价
+              最近一次原料采购单价
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">

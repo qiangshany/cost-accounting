@@ -672,7 +672,7 @@ export default function ManagementPage() {
             </div>
             <div className="mt-6 p-4 bg-violet-50 dark:bg-violet-950/20 rounded-lg border border-violet-100 dark:border-violet-900/30">
               <div className="flex items-center justify-between">
-                <span className="text-xl font-semibold text-slate-700 dark:text-slate-300">期间费用小计</span>
+                <span className="text-xl font-semibold text-slate-700 dark:text-slate-300">小计</span>
                 <span className="text-3xl font-bold text-violet-700 dark:text-violet-400">
                   ¥{calculateSubtotal(costData.managementData.periodExpenses).toFixed(2)}
                 </span>
@@ -731,7 +731,7 @@ export default function ManagementPage() {
           <CardContent className="pt-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                <span className="text-xl text-slate-600 dark:text-slate-400">生产成本小计（车间填报）</span>
+                <span className="text-xl text-slate-600 dark:text-slate-400">小计</span>
                 <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
                   ¥{calculateWorkshopProductionCost(costData.workshopData.materials, costData.workshopData.laborAndMaintenance, costData.workshopData.workshopLabor).toFixed(2)}
                 </span>

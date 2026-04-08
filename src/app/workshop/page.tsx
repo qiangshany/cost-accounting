@@ -546,22 +546,12 @@ export default function WorkshopPage() {
           </CardContent>
         </Card>
 
-        {/* 人工与维护类成本 */}
-        <Card className="shadow-sm border-slate-200 dark:border-slate-800">
-          <CardHeader className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/30 py-4">
-            <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
-              <div className="p-1.5 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
-                <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              </div>
-              人工与维护类成本
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {/* 表头 */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
-              <div className="md:col-span-7 text-xl font-semibold text-slate-700 dark:text-slate-300">成本项目</div>
-              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">金额</div>
-              <div className="md:col-span-3 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
+            <CardContent className="pt-6">
+              {/* 表头 */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
+                <div className="md:col-span-7 text-xl font-semibold text-slate-700 dark:text-slate-300">成本项目</div>
+                <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">金额</div>
+                <div className="md:col-span-3 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
             </div>
             <div className="space-y-3">
               {LABOR_MAINTENANCE_ITEMS.map((item) => (
@@ -600,7 +590,7 @@ export default function WorkshopPage() {
             </div>
             <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-100 dark:border-blue-900/30">
               <div className="flex items-center justify-between">
-                <span className="text-xl font-semibold text-slate-700 dark:text-slate-300">生产成本小计</span>
+                <span className="text-xl font-semibold text-slate-700 dark:text-slate-300">小计</span>
                 <span className="text-3xl font-bold text-blue-700 dark:text-blue-400">
                   ¥{calculateProductionCost(costData.materials, costData.laborAndMaintenance).toFixed(2)}
                 </span>

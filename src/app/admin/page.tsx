@@ -296,7 +296,7 @@ export default function AdminPage() {
               </div>
             </CardContent>
           </Card>
-        ) : hasAnyData() ? (
+        ) : (
           <>
             {/* 数据来源统计 */}
             <Card className="shadow-sm border-slate-200 dark:border-slate-800">
@@ -367,7 +367,7 @@ export default function AdminPage() {
                 </div>
                 <div className="mt-6 p-4 bg-sky-50 dark:bg-sky-950/20 rounded-lg border border-sky-100 dark:border-sky-900/30">
                   <div className="flex items-center justify-between">
-                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">原材料成本小计</span>
+                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                     <span className="text-xl font-bold text-sky-700 dark:text-sky-400">
                       ¥{calculateSubtotal(summaryData.materials.costs).toFixed(2)}
                     </span>
@@ -383,7 +383,6 @@ export default function AdminPage() {
                   <div className="p-1.5 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
                     <TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   </div>
-                  人工与维护类成本汇总
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
@@ -410,7 +409,7 @@ export default function AdminPage() {
                 </div>
                 <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-100 dark:border-amber-900/30">
                   <div className="flex items-center justify-between">
-                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">人工与维护成本小计</span>
+                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                     <span className="text-xl font-bold text-amber-700 dark:text-amber-400">
                       ¥{calculateSubtotal(summaryData.laborAndMaintenance).toFixed(2)}
                     </span>
@@ -426,7 +425,6 @@ export default function AdminPage() {
                   <div className="p-1.5 bg-violet-100 dark:bg-violet-900/50 rounded-lg">
                     <TrendingUp className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                   </div>
-                  期间费用与税费汇总
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
@@ -453,7 +451,7 @@ export default function AdminPage() {
                 </div>
                 <div className="mt-6 p-4 bg-violet-50 dark:bg-violet-950/20 rounded-lg border border-violet-100 dark:border-violet-900/30">
                   <div className="flex items-center justify-between">
-                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">期间费用小计</span>
+                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                     <span className="text-xl font-bold text-violet-700 dark:text-violet-400">
                       ¥{calculateSubtotal(summaryData.periodExpenses).toFixed(2)}
                     </span>
@@ -469,7 +467,6 @@ export default function AdminPage() {
                   <div className="p-1.5 bg-slate-100 dark:bg-slate-900/50 rounded-lg">
                     <TrendingUp className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                   </div>
-                  调整项汇总
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
@@ -496,7 +493,7 @@ export default function AdminPage() {
                 </div>
                 <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-900/20 rounded-lg border border-slate-100 dark:border-slate-800">
                   <div className="flex items-center justify-between">
-                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">调减其他收入小计</span>
+                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                     <span className="text-xl font-bold text-red-600 dark:text-red-400">
                       ¥{calculateSubtotal(summaryData.adjustments).toFixed(2)}
                     </span>
