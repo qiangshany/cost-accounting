@@ -1155,22 +1155,23 @@ function CostAnalysisView({
   }, [tableData]);
 
   // 计算单位成本和毛利润
-  // 吨成本 = 32%烧碱总成本 × 0.53 / (碱产量 / 0.32)
+  // cost32Percent = totalCost * 0.53（已包含0.53系数）
+  // 吨成本 = cost32Percent / (碱产量 / 0.32)
   const { unitCost, grossProfit } = useMemo(() => {
     if (!costListData || !costListData.cost32Percent || !costListData.totalYield) {
       // 如果没有成本数据，仍然计算毛利（成本为0时毛利=均价）
       return { unitCost: 0, grossProfit: avgPrice };
     }
 
-    // 32%烧碱对应的总成本
+    // 32%烧碱对应的总成本（已乘0.53）
     const cost32Percent = costListData.cost32Percent;
     
     // 碱产量
     const totalYield = costListData.totalYield;
     
-    // 吨成本（元/吨）= cost32Percent × 0.53 / (碱产量 / 0.32)
-    // 即：吨成本 = 总成本 × 0.53 × 0.32 / 碱产量
-    const cost = totalYield > 0 ? (cost32Percent * 0.53 * 0.32) / totalYield : 0;
+    // 吨成本（元/吨）= cost32Percent / (碱产量 / 0.32)
+    // = totalCost * 0.53 / (碱产量 / 0.32)
+    const cost = totalYield > 0 ? cost32Percent / (totalYield / 0.32) : 0;
     
     // 毛利润 = 销售均价 - 单位成本
     const profit = avgPrice - cost;
