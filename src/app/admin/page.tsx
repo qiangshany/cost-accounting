@@ -719,7 +719,17 @@ function CostAnalysisView() {
         出库数量: parseFloat(String(row['出库数量']).replace(/,/g, '')) || 0
       })).filter(item => item.单据日期 && item.物料名称);
 
-      // 4. 保存到数据库（分批上传）
+      // 4. 删除旧数据
+      const deleteResponse = await fetch('/api/sales-data?deleteAll=true', {
+        method: 'DELETE',
+      });
+
+      const deleteResult = await deleteResponse.json();
+      if (!deleteResult.success) {
+        throw new Error(`删除旧数据失败: ${deleteResult.error || '删除失败'}`);
+      }
+
+      // 5. 保存到数据库（分批上传）
       const MAX_BATCH_SIZE = 1000;
       let totalSaved = 0;
 
@@ -767,21 +777,21 @@ function CostAnalysisView() {
         }
       }
 
-      // 5. 重新加载数据
+      // 6. 重新加载数据
       const reloadResponse = await fetch('/api/sales-data?page=0&pageSize=1000');
       const reloadResult = await reloadResponse.json();
       if (reloadResult.success && reloadResult.data) {
         setRawData(reloadResult.data as SalesData[]);
       }
 
-      // 6. 自动设置默认日期（使用最晚日期）
+      // 7. 自动设置默认日期（使用最晚日期）
       const dates = salesData.map(item => item.单据日期).filter(Boolean);
       const latestDate = [...new Set(dates)].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
       if (latestDate) {
         setDateRange({ from: new Date(latestDate), to: new Date(latestDate) });
       }
 
-      toast.success(`数据已保存！共 ${totalSaved} 条记录`);
+      toast.success(`数据已保存！共 ${totalSaved} 条记录（旧数据已清除）`);
     } catch (error) {
       console.error('解析Excel失败:', error);
       toast.error(error instanceof Error ? error.message : '解析Excel文件失败');

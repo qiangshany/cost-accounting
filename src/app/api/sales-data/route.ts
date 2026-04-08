@@ -141,8 +141,23 @@ export async function DELETE(request: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const materialName = searchParams.get('materialName');
+    const deleteAll = searchParams.get('deleteAll') === 'true';
 
     const client = getSupabaseClient();
+
+    // 如果deleteAll为true，删除所有数据
+    if (deleteAll) {
+      const { error } = await client.from('sales_data').delete().neq('id', '');
+
+      if (error) {
+        throw new Error(`数据库操作失败: ${error.message}`);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: '所有销售数据已成功删除',
+      });
+    }
 
     // 构建删除条件
     let query = client.from('sales_data').delete();
