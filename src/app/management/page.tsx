@@ -597,10 +597,11 @@ export default function ManagementPage() {
                 </Label>
                 <Input
                   type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={costData.workshopData.workshopLabor['碱车间']?.['工资及福利'] || ''}
-                  onChange={(e) => handleWorkshopLaborChange('碱车间', '工资及福利', parseFloat(e.target.value) || 0)}
+                  step="0.000000001"
+                  min="0"
+                  placeholder="0"
+                  value={costData.workshopData.workshopLabor['碱车间']?.['工资及福利'] !== undefined && costData.workshopData.workshopLabor['碱车间']?.['工资及福利'] !== null ? String(costData.workshopData.workshopLabor['碱车间']?.['工资及福利']) : ''}
+                  onChange={(e) => handleWorkshopLaborChange('碱车间', '工资及福利', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                   className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                 />
                 <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
@@ -615,10 +616,11 @@ export default function ManagementPage() {
                 </Label>
                 <Input
                   type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={costData.workshopData.workshopLabor['氯车间']?.['工资及福利'] || ''}
-                  onChange={(e) => handleWorkshopLaborChange('氯车间', '工资及福利', parseFloat(e.target.value) || 0)}
+                  step="0.000000001"
+                  min="0"
+                  placeholder="0"
+                  value={costData.workshopData.workshopLabor['氯车间']?.['工资及福利'] !== undefined && costData.workshopData.workshopLabor['氯车间']?.['工资及福利'] !== null ? String(costData.workshopData.workshopLabor['氯车间']?.['工资及福利']) : ''}
+                  onChange={(e) => handleWorkshopLaborChange('氯车间', '工资及福利', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                   className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                 />
                 <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
@@ -655,10 +657,11 @@ export default function ManagementPage() {
                   <Input
                     id={`period-${item.name}`}
                     type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={costData.managementData.periodExpenses[item.name] || ''}
-                    onChange={(e) => handleValueChange('management', 'periodExpenses', item.name, parseFloat(e.target.value) || 0)}
+                    step="0.000000001"
+                    min="0"
+                    placeholder="0"
+                    value={costData.managementData.periodExpenses[item.name] !== undefined && costData.managementData.periodExpenses[item.name] !== null ? String(costData.managementData.periodExpenses[item.name]) : ''}
+                    onChange={(e) => handleValueChange('management', 'periodExpenses', item.name, e.target.value === '' ? 0 : parseFloat(e.target.value))}
                     className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                   <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
@@ -704,10 +707,11 @@ export default function ManagementPage() {
                   <Input
                     id={`adjustment-${item.name}`}
                     type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={costData.managementData.adjustments[item.name] || ''}
-                    onChange={(e) => handleValueChange('management', 'adjustments', item.name, parseFloat(e.target.value) || 0)}
+                    step="0.000000001"
+                    min="0"
+                    placeholder="0"
+                    value={costData.managementData.adjustments[item.name] !== undefined && costData.managementData.adjustments[item.name] !== null ? String(costData.managementData.adjustments[item.name]) : ''}
+                    onChange={(e) => handleValueChange('management', 'adjustments', item.name, e.target.value === '' ? 0 : parseFloat(e.target.value))}
                     className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                   <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">

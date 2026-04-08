@@ -356,7 +356,7 @@ export default function AdminPage() {
                           {isDirectCost ? '-' : quantity.toFixed(2)}
                         </div>
                         <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right">
-                          {isDirectCost ? '-' : price.toFixed(2)}
+                          {isDirectCost ? '-' : price}
                         </div>
                         <div className="md:col-span-3 text-xl text-slate-700 dark:text-slate-300 text-right font-semibold">
                           ¥{cost.toFixed(2)}

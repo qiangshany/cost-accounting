@@ -461,10 +461,11 @@ export default function WorkshopPage() {
                   <Input
                     id="alkali-yield"
                     type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={yields.alkaliYield || ''}
-                    onChange={(e) => setYields(prev => ({ ...prev, alkaliYield: parseFloat(e.target.value) || 0 }))}
+                    step="0.000000001"
+                    min="0"
+                    placeholder="0"
+                    value={yields.alkaliYield !== undefined && yields.alkaliYield !== null ? String(yields.alkaliYield) : ''}
+                    onChange={(e) => setYields(prev => ({ ...prev, alkaliYield: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
                     className="md:col-span-3 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                 </div>
@@ -475,10 +476,11 @@ export default function WorkshopPage() {
                   <Input
                     id="chlorine-yield"
                     type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={yields.chlorineYield || ''}
-                    onChange={(e) => setYields(prev => ({ ...prev, chlorineYield: parseFloat(e.target.value) || 0 }))}
+                    step="0.000000001"
+                    min="0"
+                    placeholder="0"
+                    value={yields.chlorineYield !== undefined && yields.chlorineYield !== null ? String(yields.chlorineYield) : ''}
+                    onChange={(e) => setYields(prev => ({ ...prev, chlorineYield: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
                     className="md:col-span-3 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                 </div>
@@ -489,10 +491,11 @@ export default function WorkshopPage() {
                   <Input
                     id="hydrochloric-acid-yield"
                     type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={yields.hydrochloricAcidYield || ''}
-                    onChange={(e) => setYields(prev => ({ ...prev, hydrochloricAcidYield: parseFloat(e.target.value) || 0 }))}
+                    step="0.000000001"
+                    min="0"
+                    placeholder="0"
+                    value={yields.hydrochloricAcidYield !== undefined && yields.hydrochloricAcidYield !== null ? String(yields.hydrochloricAcidYield) : ''}
+                    onChange={(e) => setYields(prev => ({ ...prev, hydrochloricAcidYield: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
                     className="md:col-span-3 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                 </div>
@@ -527,10 +530,11 @@ export default function WorkshopPage() {
                   <Input
                     id={`material-${item.name}`}
                     type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={costData.materials[item.name] || ''}
-                    onChange={(e) => handleValueChange('materials', item.name, parseFloat(e.target.value) || 0)}
+                    step="0.000000001"
+                    min="0"
+                    placeholder="0"
+                    value={costData.materials[item.name] !== undefined && costData.materials[item.name] !== null ? String(costData.materials[item.name]) : ''}
+                    onChange={(e) => handleValueChange('materials', item.name, e.target.value === '' ? 0 : parseFloat(e.target.value))}
                     className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                   <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
@@ -569,9 +573,10 @@ export default function WorkshopPage() {
                     <Input
                       id={`labor-${item.name}`}
                       type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={costData.laborAndMaintenance[item.name] || ''}
+                      step="0.000000001"
+                      min="0"
+                      placeholder="0"
+                      value={costData.laborAndMaintenance[item.name] !== undefined && costData.laborAndMaintenance[item.name] !== null ? String(costData.laborAndMaintenance[item.name]) : ''}
                       readOnly
                       className="md:col-span-2 h-12 bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-xl"
                     />
@@ -579,10 +584,11 @@ export default function WorkshopPage() {
                     <Input
                       id={`labor-${item.name}`}
                       type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={costData.laborAndMaintenance[item.name] || ''}
-                      onChange={(e) => handleValueChange('laborAndMaintenance', item.name, parseFloat(e.target.value) || 0)}
+                      step="0.000000001"
+                      min="0"
+                      placeholder="0"
+                      value={costData.laborAndMaintenance[item.name] !== undefined && costData.laborAndMaintenance[item.name] !== null ? String(costData.laborAndMaintenance[item.name]) : ''}
+                      onChange={(e) => handleValueChange('laborAndMaintenance', item.name, e.target.value === '' ? 0 : parseFloat(e.target.value))}
                       className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                     />
                   )}

@@ -231,11 +231,11 @@ interface PurchasePriceItem {
                   <Input
                     id={`material-${item.name}`}
                     type="number"
-                    step="any"
+                    step="0.000000001"
                     min="0"
                     placeholder="0"
-                    value={priceData.materials[item.name] || ''}
-                    onChange={(e) => handleValueChange('materials', item.name, parseFloat(e.target.value) || 0)}
+                    value={priceData.materials[item.name] !== undefined && priceData.materials[item.name] !== null ? String(priceData.materials[item.name]) : ''}
+                    onChange={(e) => handleValueChange('materials', item.name, e.target.value === '' ? 0 : parseFloat(e.target.value))}
                     className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                   <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
