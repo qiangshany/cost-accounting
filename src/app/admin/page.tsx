@@ -610,22 +610,6 @@ function CostAnalysisView({ totalCost, totalYield, selectedProduct }: { totalCos
                     ¥{alkaliCostPerTon.toFixed(2)}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-blue-100 text-sm mb-1">计算公式</div>
-                  <div className="text-sm opacity-80">
-                    总成本 × 0.53 ÷ (碱产量 ÷ 0.32)
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-3">计算说明</h3>
-              <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                <div>• <strong>成本系数：</strong>0.53（32%烧碱在总成本中的占比）</div>
-                <div>• <strong>碱产量：</strong>{totalYield.toFixed(2)} 吨</div>
-                <div>• <strong>浓度：</strong>32%</div>
-                <div>• <strong>计算公式：</strong>¥{totalCost.toFixed(2)} × 0.53 ÷ ({totalYield.toFixed(2)} ÷ 0.32) = ¥{alkaliCostPerTon.toFixed(2)}</div>
               </div>
             </div>
           </div>
