@@ -73,7 +73,6 @@ interface SummaryData {
 
 export default function AdminPage() {
   const router = useRouter();
-  const [selectedProduct, setSelectedProduct] = useState<string>('32%液碱');
   const [view, setView] = useState<'list' | 'analysis'>('list');
   const [isLoading, setIsLoading] = useState(false);
   
@@ -114,20 +113,26 @@ export default function AdminPage() {
     出库数量: number;
   }
   
-  // 加载成本列表数据
+  // 加载成本列表数据（使用前一天的数据）
   const loadCostListData = async () => {
-    if (!dateRange.from || !dateRange.to || !selectedProduct) {
+    if (!dateRange.from || !dateRange.to) {
       return;
     }
 
     setIsLoading(true);
     
-    const fromDateStr = format(dateRange.from, 'yyyy-MM-dd');
-    const toDateStr = format(dateRange.to, 'yyyy-MM-dd');
+    // 成本列表使用前一天的数据
+    const queryFromDate = new Date(dateRange.from);
+    queryFromDate.setDate(queryFromDate.getDate() - 1);
+    const queryToDate = new Date(dateRange.to);
+    queryToDate.setDate(queryToDate.getDate() - 1);
+    
+    const fromDateStr = format(queryFromDate, 'yyyy-MM-dd');
+    const toDateStr = format(queryToDate, 'yyyy-MM-dd');
     
     try {
       const response = await fetch(
-        `/api/admin-cost-list?startDate=${fromDateStr}&endDate=${toDateStr}&product=${selectedProduct}`
+        `/api/admin-cost-list?startDate=${fromDateStr}&endDate=${toDateStr}&product=${selectedMaterial}`
       );
 
       if (!response.ok) {
@@ -208,7 +213,7 @@ export default function AdminPage() {
     if (view === 'list') {
       loadCostListData();
     }
-  }, [dateRange, selectedProduct, view]);
+  }, [dateRange, selectedMaterial, view]);
   
   // 当切换到成本分析视图时，加载销售数据
   useEffect(() => {
@@ -337,8 +342,21 @@ export default function AdminPage() {
     toast.success('已退出登录');
   };
 
-  // 提取唯一物料（从成本列表数据中）
-  const uniqueProducts = ['32%液碱', '31%盐酸', '其他'];
+  // 物料名称标准化函数
+  const normalizeMaterialName = (name: string): string => {
+    if (name.includes('32%工业级烧碱') || name.includes('32%食品级烧碱') || name.includes('32%烧碱')) {
+      return '32%烧碱';
+    }
+    return name;
+  };
+
+  // 从Excel导入的数据中提取唯一物料（标准化后）
+  const uniqueMaterials = useMemo(() => {
+    const materials = salesData.map(item => item.物料名称).filter(Boolean);
+    const normalizedMaterials = materials.map(normalizeMaterialName);
+    const uniqueSet = [...new Set(normalizedMaterials)];
+    return uniqueSet.sort();
+  }, [salesData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-slate-100 dark:from-slate-950 dark:via-emerald-900 dark:to-slate-950 p-4 md:p-8">
@@ -401,28 +419,7 @@ export default function AdminPage() {
                 </Button>
               </div>
               
-              {/* 产品筛选 */}
-              <div className="flex items-center gap-2">
-                <span className="text-base font-medium text-slate-700 dark:text-slate-300">产品</span>
-                <div className="flex flex-wrap gap-2">
-                  {uniqueProducts.map(product => (
-                    <Button
-                      key={product}
-                      variant={selectedProduct === product ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedProduct(product)}
-                      className={`text-base px-4 py-2 ${selectedProduct === product
-                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                        : "bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
-                      }`}
-                    >
-                      {product}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-              
-              {/* 日期筛选 */}
+              {/* 日期筛选 - 左边 */}
               <div className="flex items-center gap-2">
                 <span className="text-base font-medium text-slate-700 dark:text-slate-300">日期</span>
                 <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen}>
@@ -476,6 +473,29 @@ export default function AdminPage() {
                     />
                   </PopoverContent>
                 </Popover>
+              </div>
+              
+              {/* 产品筛选 - 右边 */}
+              <div className="flex items-center gap-2 flex-1 justify-end">
+                <span className="text-base font-medium text-slate-700 dark:text-slate-300">产品</span>
+                <div className="flex flex-wrap gap-2">
+                  {uniqueMaterials.length > 0 ? uniqueMaterials.map(material => (
+                    <Button
+                      key={material}
+                      variant={selectedMaterial === material ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedMaterial(material)}
+                      className={`text-base px-4 py-2 ${selectedMaterial === material
+                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                        : "bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      {material}
+                    </Button>
+                  )) : (
+                    <span className="text-sm text-slate-500 dark:text-slate-400">请先导入Excel数据</span>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -749,12 +769,6 @@ export default function AdminPage() {
             salesData={salesData}
             dateRange={dateRange}
             selectedMaterial={selectedMaterial}
-            setSelectedMaterial={setSelectedMaterial}
-            setDateRange={setDateRange}
-            isStartCalendarOpen={isStartCalendarOpen}
-            setIsStartCalendarOpen={setIsStartCalendarOpen}
-            isEndCalendarOpen={isEndCalendarOpen}
-            setIsEndCalendarOpen={setIsEndCalendarOpen}
           />
         )}
       </div>
@@ -767,43 +781,35 @@ interface CostAnalysisViewProps {
   salesData: SalesData[];
   dateRange: { from: Date | undefined; to: Date | undefined };
   selectedMaterial: string;
-  setSelectedMaterial: (material: string) => void;
-  setDateRange: (range: { from: Date | undefined; to: Date | undefined }) => void;
-  isStartCalendarOpen: boolean;
-  setIsStartCalendarOpen: (open: boolean) => void;
-  isEndCalendarOpen: boolean;
-  setIsEndCalendarOpen: (open: boolean) => void;
 }
 
 function CostAnalysisView({ 
   salesData, 
   dateRange, 
-  selectedMaterial, 
-  setSelectedMaterial,
-  setDateRange,
-  isStartCalendarOpen,
-  setIsStartCalendarOpen,
-  isEndCalendarOpen,
-  setIsEndCalendarOpen
+  selectedMaterial
 }: CostAnalysisViewProps) {
   
-  // 销售数据接口
-  interface SalesData {
-    单据日期: string;
-    客户: string;
-    业务员: string;
-    物料名称: string;
-    销售计划数量: number;
-    含税净价: number;
-    价税合计: number;
-    出库数量: number;
-  }
+  // 物料名称标准化
+  const normalizeMaterialName = (name: string): string => {
+    if (name.includes('32%工业级烧碱') || name.includes('32%食品级烧碱') || name.includes('32%烧碱')) {
+      return '32%烧碱';
+    }
+    return name;
+  };
+  
+  // 标准化销售数据
+  const normalizedSalesData = useMemo(() => {
+    return salesData.map(item => ({
+      ...item,
+      物料名称: normalizeMaterialName(item.物料名称)
+    }));
+  }, [salesData]);
+  
+  // 使用标准化后的数据
+  const rawData = normalizedSalesData;
 
   // 悬浮状态
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-
-  // 使用从props传入的销售数据
-  const rawData = salesData;
 
   // 颜色配置
   const COLORS = [
@@ -819,153 +825,6 @@ function CostAnalysisView({
     percentage: string;
     avgPrice: string;
   }
-
-  // 物料名称标准化
-  const normalizeMaterialName = (name: string): string => {
-    if (name.includes('32%工业级烧碱') || name.includes('32%食品级烧碱')) {
-      return '32%烧碱';
-    }
-    return name;
-  };
-
-  // 处理文件上传
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    try {
-      // 1. 读取Excel文件
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-
-      // 2. 转换为JSON
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false }) as Record<string, string>[];
-
-      // 3. 映射数据格式
-      const salesData: SalesData[] = jsonData.map(row => ({
-        单据日期: row['单据日期'] || '',
-        客户: row['客户'] || '',
-        业务员: row['业务员'] || '',
-        物料名称: normalizeMaterialName(row['物料名称'] || ''),
-        销售计划数量: parseFloat(String(row['销售计划数量']).replace(/,/g, '')) || 0,
-        含税净价: parseFloat(String(row['含税净价']).replace(/,/g, '')) || 0,
-        价税合计: parseFloat(String(row['价税合计']).replace(/,/g, '')) || 0,
-        出库数量: parseFloat(String(row['出库数量']).replace(/,/g, '')) || 0
-      })).filter(item => item.单据日期 && item.物料名称);
-
-      // 4. 删除旧数据
-      const deleteResponse = await fetch('/api/sales-data?deleteAll=true', {
-        method: 'DELETE',
-      });
-
-      const deleteResult = await deleteResponse.json();
-      if (!deleteResult.success) {
-        throw new Error(`删除旧数据失败: ${deleteResult.error || '删除失败'}`);
-      }
-
-      // 5. 保存到数据库（分批上传）
-      const MAX_BATCH_SIZE = 1000;
-      let totalSaved = 0;
-
-      if (salesData.length <= MAX_BATCH_SIZE) {
-        // 单批次上传
-        const response = await fetch('/api/sales-data', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ salesData }),
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-          throw new Error(result.error || '保存失败');
-        }
-
-        totalSaved = salesData.length;
-      } else {
-        // 分批上传
-        const batches = Math.ceil(salesData.length / MAX_BATCH_SIZE);
-
-        for (let i = 0; i < batches; i++) {
-          const start = i * MAX_BATCH_SIZE;
-          const end = Math.min(start + MAX_BATCH_SIZE, salesData.length);
-          const batch = salesData.slice(start, end);
-
-          const response = await fetch('/api/sales-data', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ salesData: batch }),
-          });
-
-          const result = await response.json();
-
-          if (!result.success) {
-            throw new Error(`第 ${i + 1} 批保存失败: ${result.error || '保存失败'}`);
-          }
-
-          totalSaved += result.data?.length || 0;
-        }
-      }
-
-      // 6. 重新加载数据
-      const loadAllData = async () => {
-        const pageSize = 1000;
-        let page = 0;
-        let allData: SalesData[] = [];
-        let hasMore = true;
-
-        while (hasMore) {
-          const params = new URLSearchParams();
-          params.append('page', page.toString());
-          params.append('pageSize', pageSize.toString());
-
-          const response = await fetch(`/api/sales-data?${params.toString()}`);
-          const result = await response.json();
-
-          if (result.success && result.data) {
-            allData = [...allData, ...result.data];
-            hasMore = result.hasMore || false;
-            page++;
-          } else {
-            hasMore = false;
-          }
-        }
-
-        return allData;
-      };
-
-      const allNewData = await loadAllData();
-      setRawData(allNewData);
-
-      // 7. 自动设置默认日期（使用最晚日期）
-      const dates = salesData.map(item => item.单据日期).filter(Boolean);
-      const latestDate = [...new Set(dates)].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
-      if (latestDate) {
-        setDateRange({ from: new Date(latestDate), to: new Date(latestDate) });
-      }
-
-      toast.success(`数据已保存！共 ${totalSaved} 条记录（旧数据已清除）`);
-    } catch (error) {
-      console.error('解析Excel失败:', error);
-      toast.error(error instanceof Error ? error.message : '解析Excel文件失败');
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  // 提取唯一物料
-  const uniqueMaterials = useMemo(() => {
-    const materials = rawData.map(item => item.物料名称).filter(Boolean);
-    return [...new Set(materials)].sort();
-  }, [rawData]);
 
   // 过滤数据
   const filteredData = useMemo(() => {
