@@ -94,8 +94,9 @@ export default function AdminPage() {
   }, [router]);
 
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    setSelectedDate(today);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    setSelectedDate(yesterday.toISOString().split('T')[0]);
   }, []);
 
   // 加载数据
