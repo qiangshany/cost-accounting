@@ -546,14 +546,6 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </>
-        ) : (
-          <Card className="shadow-sm border-slate-200 dark:border-slate-800">
-            <CardContent className="py-12">
-              <div className="flex items-center justify-center">
-                <p className="text-slate-500 dark:text-slate-400">暂无数据</p>
-              </div>
-            </CardContent>
-          </Card>
         )}
       </div>
     </div>

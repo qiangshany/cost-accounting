@@ -546,7 +546,15 @@ export default function WorkshopPage() {
           </CardContent>
         </Card>
 
-            <CardContent className="pt-6">
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800">
+          <CardHeader className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/30 py-4">
+            <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
+              <div className="p-1.5 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
+                <TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
               {/* 表头 */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
                 <div className="md:col-span-7 text-xl font-semibold text-slate-700 dark:text-slate-300">成本项目</div>
