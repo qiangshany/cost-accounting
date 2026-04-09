@@ -181,9 +181,8 @@ export default function AdminPage() {
   
   // 加载成本列表数据
   // 规则：
-  // 1. 查询日期范围内已填报的数据，包括当天
-  // 2. 如果当天数据未填报，显示"-"
-  // 3. 如果填报了一部分，显示一部分
+  // 1. 如果结束日期包含今天，查询开始日期到昨天
+  // 2. 如果结束日期不包含今天，查询开始日期到结束日期
   const loadCostListData = async () => {
     if (!dateRange.from || !dateRange.to) {
       return;
@@ -198,9 +197,35 @@ export default function AdminPage() {
     const queryToDate = new Date(dateRange.to);
     queryToDate.setHours(0, 0, 0, 0);
     
-    // 查询范围：开始日期到结束日期（包含当天）
-    const queryFromDate: Date = new Date(dateRange.from);
-    const queryEndDate: Date = new Date(dateRange.to);
+    // 查询范围判断
+    let queryFromDate: Date;
+    let queryEndDate: Date;
+    
+    if (queryToDate.getTime() >= today.getTime()) {
+      // 结束日期包含今天，查询范围改为开始日期到昨天
+      queryFromDate = new Date(dateRange.from);
+      queryEndDate = new Date(today);
+      queryEndDate.setDate(queryEndDate.getDate() - 1);
+    } else {
+      // 结束日期不包含今天，使用原始日期范围
+      queryFromDate = new Date(dateRange.from);
+      queryEndDate = new Date(dateRange.to);
+    }
+    
+    // 如果查询结束日期早于开始日期，直接返回空数据
+    if (queryEndDate < queryFromDate) {
+      setCostListData({
+        materials: { quantities: {}, costs: {}, prices: {} },
+        laborAndMaintenance: {},
+        periodExpenses: {},
+        workshops: [],
+        totalYield: 0,
+        totalCost: 0,
+        cost32Percent: 0,
+      });
+      setIsLoading(false);
+      return;
+    }
     
     const fromDateStr = format(queryFromDate, 'yyyy-MM-dd');
     const toDateStr = format(queryEndDate, 'yyyy-MM-dd');
