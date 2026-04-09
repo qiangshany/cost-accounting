@@ -26,7 +26,7 @@ const MATERIAL_ITEMS: { name: string; unit: string }[] = [
 ];
 
 interface PriceData {
-  materials: Record<string, number>;
+  materials: Record<string, string>;
 }
 
 export default function PurchasingPage() {
@@ -55,8 +55,8 @@ export default function PurchasingPage() {
 
   // 初始化价格项
   useEffect(() => {
-    const materials: Record<string, number> = {};
-    MATERIAL_ITEMS.forEach(item => materials[item.name] = 0);
+    const materials: Record<string, string> = {};
+    MATERIAL_ITEMS.forEach(item => materials[item.name] = '');
     setPriceData({ materials });
   }, []);
 
@@ -75,10 +75,10 @@ interface PurchasePriceItem {
 }
 
         if (data.success && data.data && data.data.length > 0) {
-          // 构建价格映射
-          const priceMap: Record<string, number> = {};
+          // 构建价格映射（转换为字符串存储）
+          const priceMap: Record<string, string> = {};
           data.data.forEach((item: PurchasePriceItem) => {
-            priceMap[item.material_name] = item.price || 0;
+            priceMap[item.material_name] = item.price === null ? '' : String(item.price);
           });
 
           // 更新状态
@@ -97,7 +97,7 @@ interface PurchasePriceItem {
   const handleValueChange = (
     category: keyof PriceData,
     item: string,
-    value: number
+    value: string
   ) => {
     setPriceData(prev => ({
       ...prev,
@@ -120,13 +120,16 @@ interface PurchasePriceItem {
       return;
     }
 
-    // 只提交有价格的材料（大于0的材料）
+    // 只提交有价格的材料（将字符串转换为数字）
     const itemsToSubmit = MATERIAL_ITEMS
-      .filter(item => (priceData.materials[item.name] || 0) > 0)
+      .filter(item => {
+        const val = priceData.materials[item.name] || '';
+        return val !== '' && parseFloat(val) > 0;
+      })
       .map(item => ({
         report_date: selectedDate,
         material_name: item.name,
-        price: priceData.materials[item.name] || 0,
+        price: parseFloat(priceData.materials[item.name]) || 0,
         unit: item.unit,
       }));
 
@@ -228,12 +231,11 @@ interface PurchasePriceItem {
                   </Label>
                   <Input
                     id={`material-${item.name}`}
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="0"
-                    value={priceData.materials[item.name] !== undefined && priceData.materials[item.name] !== null ? String(priceData.materials[item.name]) : ''}
-                    onChange={(e) => handleValueChange('materials', item.name, e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                    value={priceData.materials[item.name] ?? ''}
+                    onChange={(e) => handleValueChange('materials', item.name, e.target.value)}
                     className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                   <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">

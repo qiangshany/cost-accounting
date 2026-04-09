@@ -56,15 +56,15 @@ const LABOR_MAINTENANCE_ITEMS: { name: string; unit: string }[] = [
 
 interface CostData {
   workshopData: {
-    materials: Record<string, number>;
-    laborAndMaintenance: Record<string, number>;
-    workshopLabor: Record<string, Record<string, number>>; // 按车间存储工资及福利
+    materials: Record<string, string>;
+    laborAndMaintenance: Record<string, string>;
+    workshopLabor: Record<string, Record<string, string>>; // 按车间存储工资及福利
   };
   managementData: {
-    materials: Record<string, number>;
-    laborAndMaintenance: Record<string, number>;
-    periodExpenses: Record<string, number>;
-    adjustments: Record<string, number>;
+    materials: Record<string, string>;
+    laborAndMaintenance: Record<string, string>;
+    periodExpenses: Record<string, string>;
+    adjustments: Record<string, string>;
   };
 }
 
@@ -112,8 +112,8 @@ export default function ManagementPage() {
       materials: {},
       laborAndMaintenance: {},
       workshopLabor: {
-        '碱车间': { '工资及福利': 0 },
-        '氯车间': { '工资及福利': 0 },
+        '碱车间': { '工资及福利': '' },
+        '氯车间': { '工资及福利': '' },
       },
     },
     managementData: {
@@ -145,25 +145,25 @@ export default function ManagementPage() {
   // 初始化成本项
   useEffect(() => {
     const initCostData = () => {
-      const workshopMaterials: Record<string, number> = {};
-      MATERIAL_ITEMS.forEach(item => workshopMaterials[item.name] = 0);
+      const workshopMaterials: Record<string, string> = {};
+      MATERIAL_ITEMS.forEach(item => workshopMaterials[item.name] = '');
 
-      const workshopLabor: Record<string, number> = {};
-      LABOR_MAINTENANCE_ITEMS.forEach(item => workshopLabor[item.name] = 0);
+      const workshopLabor: Record<string, string> = {};
+      LABOR_MAINTENANCE_ITEMS.forEach(item => workshopLabor[item.name] = '');
 
-      const periodExpenses: Record<string, number> = {};
-      PERIOD_EXPENSE_ITEMS.forEach(item => periodExpenses[item.name] = 0);
+      const periodExpenses: Record<string, string> = {};
+      PERIOD_EXPENSE_ITEMS.forEach(item => periodExpenses[item.name] = '');
 
-      const adjustments: Record<string, number> = {};
-      ADJUSTMENT_ITEMS.forEach(item => adjustments[item.name] = 0);
+      const adjustments: Record<string, string> = {};
+      ADJUSTMENT_ITEMS.forEach(item => adjustments[item.name] = '');
 
       return {
         workshopData: {
           materials: workshopMaterials,
           laborAndMaintenance: workshopLabor,
           workshopLabor: {
-            '碱车间': { '工资及福利': 0 },
-            '氯车间': { '工资及福利': 0 },
+            '碱车间': { '工资及福利': '' },
+            '氯车间': { '工资及福利': '' },
           },
         },
         managementData: {
@@ -205,9 +205,10 @@ export default function ManagementPage() {
 
         // 加载车间原材料成本数据（汇总所有车间）
         if (materialData.success && materialData.data) {
-          const materialMap: Record<string, number> = {};
+          const materialMap: Record<string, string> = {};
           materialData.data.forEach((item: MaterialCostData) => {
-            materialMap[item.material_name] = (materialMap[item.material_name] || 0) + (item.quantity || 0);
+            const currentValue = materialMap[item.material_name] ? parseFloat(materialMap[item.material_name] || '0') || 0 : 0;
+            materialMap[item.material_name] = String(currentValue + (item.quantity || 0));
           });
           setCostData(prev => ({
             ...prev,
@@ -220,21 +221,22 @@ export default function ManagementPage() {
 
         // 加载车间人工与维护成本数据（汇总所有车间，按车间分别加载工资及福利）
         if (workshopLaborJson.success && workshopLaborJson.data) {
-          const laborMap: Record<string, number> = {};
-          const workshopLaborMap: Record<string, Record<string, number>> = {
-            '碱车间': { '工资及福利': 0 },
-            '氯车间': { '工资及福利': 0 },
+          const laborMap: Record<string, string> = {};
+          const workshopLaborMap: Record<string, Record<string, string>> = {
+            '碱车间': { '工资及福利': '' },
+            '氯车间': { '工资及福利': '' },
           };
 
           workshopLaborJson.data.forEach((item: WorkshopLaborItem) => {
             if (item.cost_item_name === '工资及福利') {
               // 按车间分别加载工资及福利
               if (item.workshop && workshopLaborMap[item.workshop]) {
-                workshopLaborMap[item.workshop]['工资及福利'] = item.amount || 0;
+                workshopLaborMap[item.workshop]['工资及福利'] = item.amount === null ? '' : String(item.amount);
               }
             } else {
               // 汇总所有车间的人工与维护成本（不包括工资及福利）
-              laborMap[item.cost_item_name] = (laborMap[item.cost_item_name] || 0) + (item.amount || 0);
+              const currentValue = laborMap[item.cost_item_name] ? parseFloat(laborMap[item.cost_item_name] || '0') || 0 : 0;
+              laborMap[item.cost_item_name] = String(currentValue + (item.amount || 0));
             }
           });
 
@@ -250,9 +252,9 @@ export default function ManagementPage() {
 
         // 加载期间费用数据
         if (periodData.success && periodData.data) {
-          const periodMap: Record<string, number> = {};
+          const periodMap: Record<string, string> = {};
           periodData.data.forEach((item: PeriodExpenseData) => {
-            periodMap[item.expense_item_name] = item.amount || 0;
+            periodMap[item.expense_item_name] = item.amount === null ? '' : String(item.amount);
           });
           setCostData(prev => ({
             ...prev,
@@ -265,9 +267,9 @@ export default function ManagementPage() {
 
         // 加载调整项数据
         if (adjustmentData.success && adjustmentData.data) {
-          const adjustmentMap: Record<string, number> = {};
+          const adjustmentMap: Record<string, string> = {};
           adjustmentData.data.forEach((item: AdjustmentData) => {
-            adjustmentMap[item.adjustment_name] = item.amount || 0;
+            adjustmentMap[item.adjustment_name] = item.amount === null ? '' : String(item.amount);
           });
           setCostData(prev => ({
             ...prev,
@@ -298,7 +300,7 @@ export default function ManagementPage() {
     section: 'workshop' | 'management',
     category: 'materials' | 'laborAndMaintenance' | 'periodExpenses' | 'adjustments',
     item: string,
-    value: number
+    value: string
   ) => {
     setCostData(prev => {
       if (section === 'workshop') {
@@ -322,7 +324,7 @@ export default function ManagementPage() {
   };
 
   // 处理车间工资及福利变化
-  const handleWorkshopLaborChange = (workshop: string, itemName: string, value: number) => {
+  const handleWorkshopLaborChange = (workshop: string, itemName: string, value: string) => {
     setCostData(prev => ({
       ...prev,
       workshopData: {
@@ -338,16 +340,16 @@ export default function ManagementPage() {
     }));
   };
 
-  // 计算小计
-  const calculateSubtotal = (obj: Record<string, number>) => {
-    return Object.values(obj).reduce((sum, val) => sum + (val || 0), 0);
+  // 计算小计（将字符串转换为数字）
+  const calculateSubtotal = (obj: Record<string, string>) => {
+    return Object.values(obj).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
   };
 
   // 计算生产成本小计（数量 × 单价 + 金额类项目 + 工资及福利）
-  const calculateWorkshopProductionCost = (materials: Record<string, number>, labor: Record<string, number>, workshopLabor: Record<string, Record<string, number>>) => {
+  const calculateWorkshopProductionCost = (materials: Record<string, string>, labor: Record<string, string>, workshopLabor: Record<string, Record<string, string>>) => {
     // 计算原材料成本：数量 × 单价（针对单位为物理量的项目）+ 金额（针对单位为"元"的项目）
     const materialCost = MATERIAL_ITEMS.reduce((sum, item) => {
-      const quantity = materials[item.name] || 0;
+      const quantity = parseFloat(materials[item.name]) || 0;
       if (item.unit === '元') {
         // 单位为"元"的项目，直接作为金额
         return sum + quantity;
@@ -361,12 +363,12 @@ export default function ManagementPage() {
     // 计算人工与维护成本：非"工资及福利"的项目
     const laborCostItems = LABOR_MAINTENANCE_ITEMS.filter(item => item.name !== '工资及福利');
     const laborCost = laborCostItems.reduce((sum, item) => {
-      return sum + (labor[item.name] || 0);
+      return sum + (parseFloat(labor[item.name]) || 0);
     }, 0);
 
     // 计算所有车间的工资及福利总和
     const totalSalaryAndBenefits = Object.values(workshopLabor).reduce((sum, workshop) => {
-      return sum + (workshop['工资及福利'] || 0);
+      return sum + (parseFloat(workshop['工资及福利']) || 0);
     }, 0);
 
     return materialCost + laborCost + totalSalaryAndBenefits;
@@ -411,7 +413,8 @@ export default function ManagementPage() {
       const salaryItems: SalaryItem[] = [];
 
       workshops.forEach(workshop => {
-        const amount = costData.workshopData.workshopLabor[workshop]?.['工资及福利'] || 0;
+        const amountStr = costData.workshopData.workshopLabor[workshop]?.['工资及福利'] || '';
+        const amount = amountStr === '' ? 0 : parseFloat(amountStr);
         if (amount > 0) {
           salaryItems.push({
             report_date: selectedDate,
@@ -453,12 +456,16 @@ export default function ManagementPage() {
 
       // 提交期间费用数据（只提交有金额的项目）
       const periodItems = PERIOD_EXPENSE_ITEMS
-        .filter(item => (costData.managementData.periodExpenses[item.name] || 0) > 0)
+        .filter(item => {
+          const valStr = costData.managementData.periodExpenses[item.name] || '';
+          const val = valStr === '' ? 0 : parseFloat(valStr);
+          return val > 0;
+        })
         .map(item => ({
           report_date: selectedDate,
           expense_item_name: item.name,
           product: selectedProduct,
-          amount: costData.managementData.periodExpenses[item.name] || 0,
+          amount: parseFloat(costData.managementData.periodExpenses[item.name]) || 0,
           unit: item.unit,
         }));
 
@@ -491,12 +498,16 @@ export default function ManagementPage() {
 
       // 提交调整项数据（只提交有金额的项目）
       const adjustmentItems = ADJUSTMENT_ITEMS
-        .filter(item => (costData.managementData.adjustments[item.name] || 0) > 0)
+        .filter(item => {
+          const valStr = costData.managementData.adjustments[item.name] || '';
+          const val = valStr === '' ? 0 : parseFloat(valStr);
+          return val > 0;
+        })
         .map(item => ({
           report_date: selectedDate,
           adjustment_name: item.name,
           product: selectedProduct,
-          amount: costData.managementData.adjustments[item.name] || 0,
+          amount: parseFloat(costData.managementData.adjustments[item.name]) || 0,
           unit: item.unit,
         }));
 
@@ -596,12 +607,11 @@ export default function ManagementPage() {
                   碱车间 - 工资及福利
                 </Label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="0"
-                  value={costData.workshopData.workshopLabor['碱车间']?.['工资及福利'] !== undefined && costData.workshopData.workshopLabor['碱车间']?.['工资及福利'] !== null ? String(costData.workshopData.workshopLabor['碱车间']?.['工资及福利']) : ''}
-                  onChange={(e) => handleWorkshopLaborChange('碱车间', '工资及福利', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                  value={costData.workshopData.workshopLabor['碱车间']?.['工资及福利'] ?? ''}
+                  onChange={(e) => handleWorkshopLaborChange('碱车间', '工资及福利', e.target.value)}
                   className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                 />
                 <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
@@ -615,12 +625,11 @@ export default function ManagementPage() {
                   氯车间 - 工资及福利
                 </Label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="0"
-                  value={costData.workshopData.workshopLabor['氯车间']?.['工资及福利'] !== undefined && costData.workshopData.workshopLabor['氯车间']?.['工资及福利'] !== null ? String(costData.workshopData.workshopLabor['氯车间']?.['工资及福利']) : ''}
-                  onChange={(e) => handleWorkshopLaborChange('氯车间', '工资及福利', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                  value={costData.workshopData.workshopLabor['氯车间']?.['工资及福利'] ?? ''}
+                  onChange={(e) => handleWorkshopLaborChange('氯车间', '工资及福利', e.target.value)}
                   className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                 />
                 <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
@@ -656,12 +665,11 @@ export default function ManagementPage() {
                   </Label>
                   <Input
                     id={`period-${item.name}`}
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="0"
-                    value={costData.managementData.periodExpenses[item.name] !== undefined && costData.managementData.periodExpenses[item.name] !== null ? String(costData.managementData.periodExpenses[item.name]) : ''}
-                    onChange={(e) => handleValueChange('management', 'periodExpenses', item.name, e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                    value={costData.managementData.periodExpenses[item.name] ?? ''}
+                    onChange={(e) => handleValueChange('management', 'periodExpenses', item.name, e.target.value)}
                     className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                   <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
@@ -706,12 +714,11 @@ export default function ManagementPage() {
                   </Label>
                   <Input
                     id={`adjustment-${item.name}`}
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="0"
-                    value={costData.managementData.adjustments[item.name] !== undefined && costData.managementData.adjustments[item.name] !== null ? String(costData.managementData.adjustments[item.name]) : ''}
-                    onChange={(e) => handleValueChange('management', 'adjustments', item.name, e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                    value={costData.managementData.adjustments[item.name] ?? ''}
+                    onChange={(e) => handleValueChange('management', 'adjustments', item.name, e.target.value)}
                     className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                   <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">

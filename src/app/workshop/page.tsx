@@ -28,7 +28,7 @@ const MATERIAL_ITEMS: { name: string; unit: string }[] = [
 
 // 碱车间制造费用
 const LABOR_MAINTENANCE_ITEMS: { name: string; unit: string }[] = [
-  { name: '工人工资及保险', unit: '元', readonly: true },
+  { name: '工人工资及保险', unit: '元' },
   { name: '维修费', unit: '元' },
   { name: '外协维修', unit: '元' },
   { name: '盐泥、铲销费用', unit: '元' },
@@ -38,8 +38,8 @@ const LABOR_MAINTENANCE_ITEMS: { name: string; unit: string }[] = [
 ];
 
 interface CostData {
-  materials: Record<string, number>;
-  laborAndMaintenance: Record<string, number>;
+  materials: Record<string, string>;  // 改为字符串存储输入值
+  laborAndMaintenance: Record<string, string>;
 }
 
 interface ProductionYieldData {
@@ -77,9 +77,9 @@ export default function WorkshopPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [username, setUsername] = useState<string>('');
   const [yields, setYields] = useState({
-    alkaliYield: 0, // 碱产量
-    chlorineYield: 0, // 氯产量
-    hydrochloricAcidYield: 0, // 盐酸产量
+    alkaliYield: '', // 碱产量（字符串存储）
+    chlorineYield: '', // 氯产量
+    hydrochloricAcidYield: '', // 盐酸产量
   });
 
   // 检查登录状态和角色
@@ -113,11 +113,11 @@ export default function WorkshopPage() {
   // 初始化成本项
   useEffect(() => {
     const initCostData = () => {
-      const materials: Record<string, number> = {};
-      MATERIAL_ITEMS.forEach(item => materials[item.name] = 0);
+      const materials: Record<string, string> = {};
+      MATERIAL_ITEMS.forEach(item => materials[item.name] = '');
 
-      const laborAndMaintenance: Record<string, number> = {};
-      LABOR_MAINTENANCE_ITEMS.forEach(item => laborAndMaintenance[item.name] = 0);
+      const laborAndMaintenance: Record<string, string> = {};
+      LABOR_MAINTENANCE_ITEMS.forEach(item => laborAndMaintenance[item.name] = '');
 
       return { materials, laborAndMaintenance };
     };
@@ -152,21 +152,21 @@ export default function WorkshopPage() {
         if (yieldData.success && yieldData.data && yieldData.data.length > 0) {
           const yieldRecord = yieldData.data[0] as ProductionYieldData;
           if (yieldRecord.alkali_yield !== undefined) {
-            setYields(prev => ({ ...prev, alkaliYield: yieldRecord.alkali_yield || 0 }));
+            setYields(prev => ({ ...prev, alkaliYield: yieldRecord.alkali_yield === null ? '' : String(yieldRecord.alkali_yield) }));
           }
           if (yieldRecord.chlorine_yield !== undefined) {
-            setYields(prev => ({ ...prev, chlorineYield: yieldRecord.chlorine_yield || 0 }));
+            setYields(prev => ({ ...prev, chlorineYield: yieldRecord.chlorine_yield === null ? '' : String(yieldRecord.chlorine_yield) }));
           }
           if (yieldRecord.hydrochloric_acid_yield !== undefined) {
-            setYields(prev => ({ ...prev, hydrochloricAcidYield: yieldRecord.hydrochloric_acid_yield || 0 }));
+            setYields(prev => ({ ...prev, hydrochloricAcidYield: yieldRecord.hydrochloric_acid_yield === null ? '' : String(yieldRecord.hydrochloric_acid_yield) }));
           }
         }
 
         // 加载原材料成本数据
         if (materialData.success && materialData.data) {
-          const materialMap: Record<string, number> = {};
+          const materialMap: Record<string, string> = {};
           materialData.data.forEach((item: MaterialCostData) => {
-            materialMap[item.material_name] = item.quantity || 0;
+            materialMap[item.material_name] = item.quantity ? String(item.quantity) : '';
           });
           setCostData(prev => ({
             ...prev,
@@ -176,11 +176,11 @@ export default function WorkshopPage() {
 
         // 加载人工与维护成本数据
         if (laborData.success && laborData.data) {
-          const laborMap: Record<string, number> = {};
+          const laborMap: Record<string, string> = {};
 
           laborData.data.forEach((item: LaborCostData) => {
             // 直接使用当前车间的数据（包括工资及福利）
-            laborMap[item.cost_item_name] = item.amount || 0;
+            laborMap[item.cost_item_name] = item.amount ? String(item.amount) : '';
           });
 
           setCostData(prev => ({
@@ -208,7 +208,7 @@ export default function WorkshopPage() {
   const handleValueChange = (
     category: keyof CostData,
     item: string,
-    value: number
+    value: string
   ) => {
     setCostData(prev => ({
       ...prev,
@@ -217,10 +217,10 @@ export default function WorkshopPage() {
   };
 
   // 计算生产成本小计（数量 × 单价 + 金额类项目 + 工资及福利）
-  const calculateProductionCost = (materials: Record<string, number>, labor: Record<string, number>) => {
+  const calculateProductionCost = (materials: Record<string, string>, labor: Record<string, string>) => {
     // 计算原材料成本：数量 × 单价（针对单位为物理量的项目）+ 金额（针对单位为"元"的项目）
     const materialCost = MATERIAL_ITEMS.reduce((sum, item) => {
-      const quantity = materials[item.name] || 0;
+      const quantity = parseFloat(materials[item.name]) || 0;
       if (item.unit === '元') {
         // 单位为"元"的项目，直接作为金额
         return sum + quantity;
@@ -233,7 +233,7 @@ export default function WorkshopPage() {
 
     // 计算人工与维护成本：包含所有项目（包括工资及福利）
     const laborCost = LABOR_MAINTENANCE_ITEMS.reduce((sum, item) => {
-      return sum + (labor[item.name] || 0);
+      return sum + (parseFloat(labor[item.name]) || 0);
     }, 0);
 
     return materialCost + laborCost;
@@ -256,8 +256,9 @@ export default function WorkshopPage() {
 
     setIsLoading(true);
     try {
-      // 提交产量数据
-      if (yields.alkaliYield || yields.chlorineYield || yields.hydrochloricAcidYield) {
+      // 提交产量数据（将字符串转换为数字）
+      const submitYield = yields.alkaliYield || yields.chlorineYield || yields.hydrochloricAcidYield;
+      if (submitYield) {
         const yieldResponse = await fetch('/api/production-yields', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -265,9 +266,9 @@ export default function WorkshopPage() {
             report_date: selectedDate,
             product: selectedProduct,
             workshop: selectedWorkshop,
-            alkali_yield: yields.alkaliYield || 0,
-            chlorine_yield: yields.chlorineYield || 0,
-            hydrochloric_acid_yield: yields.hydrochloricAcidYield || 0,
+            alkali_yield: yields.alkaliYield === '' ? 0 : parseFloat(yields.alkaliYield) || 0,
+            chlorine_yield: yields.chlorineYield === '' ? 0 : parseFloat(yields.chlorineYield) || 0,
+            hydrochloric_acid_yield: yields.hydrochloricAcidYield === '' ? 0 : parseFloat(yields.hydrochloricAcidYield) || 0,
           }),
         });
 
@@ -291,13 +292,16 @@ export default function WorkshopPage() {
 
       // 提交原材料成本数据（只提交有数量的材料）
       const materialItems = MATERIAL_ITEMS
-        .filter(item => (costData.materials[item.name] || 0) > 0)
+        .filter(item => {
+          const val = parseFloat(costData.materials[item.name] || '0') || 0;
+          return val > 0;
+        })
         .map(item => ({
           report_date: selectedDate,
           material_name: item.name,
           product: selectedProduct,
           workshop: selectedWorkshop,
-          quantity: costData.materials[item.name] || 0,
+          quantity: parseFloat(costData.materials[item.name] || '0') || 0,
           unit: item.unit,
         }));
 
@@ -330,13 +334,16 @@ export default function WorkshopPage() {
 
       // 提交人工与维护成本数据（只提交有金额的项目）
       const laborItems = LABOR_MAINTENANCE_ITEMS
-        .filter(item => (costData.laborAndMaintenance[item.name] || 0) > 0)
+        .filter(item => {
+          const val = parseFloat(costData.laborAndMaintenance[item.name] || '0') || 0;
+          return val > 0;
+        })
         .map(item => ({
           report_date: selectedDate,
           cost_item_name: item.name,
           product: selectedProduct,
           workshop: selectedWorkshop,
-          amount: costData.laborAndMaintenance[item.name] || 0,
+          amount: parseFloat(costData.laborAndMaintenance[item.name] || '0') || 0,
           unit: item.unit,
         }));
 
@@ -457,12 +464,11 @@ export default function WorkshopPage() {
                   </Label>
                   <Input
                     id="alkali-yield"
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="0"
-                    value={yields.alkaliYield !== undefined && yields.alkaliYield !== null ? String(yields.alkaliYield) : ''}
-                    onChange={(e) => setYields(prev => ({ ...prev, alkaliYield: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                    value={yields.alkaliYield}
+                    onChange={(e) => setYields(prev => ({ ...prev, alkaliYield: e.target.value }))}
                     className="md:col-span-3 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                 </div>
@@ -472,12 +478,11 @@ export default function WorkshopPage() {
                   </Label>
                   <Input
                     id="chlorine-yield"
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="0"
-                    value={yields.chlorineYield !== undefined && yields.chlorineYield !== null ? String(yields.chlorineYield) : ''}
-                    onChange={(e) => setYields(prev => ({ ...prev, chlorineYield: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                    value={yields.chlorineYield}
+                    onChange={(e) => setYields(prev => ({ ...prev, chlorineYield: e.target.value }))}
                     className="md:col-span-3 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                 </div>
@@ -487,12 +492,11 @@ export default function WorkshopPage() {
                   </Label>
                   <Input
                     id="hydrochloric-acid-yield"
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="0"
-                    value={yields.hydrochloricAcidYield !== undefined && yields.hydrochloricAcidYield !== null ? String(yields.hydrochloricAcidYield) : ''}
-                    onChange={(e) => setYields(prev => ({ ...prev, hydrochloricAcidYield: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                    value={yields.hydrochloricAcidYield}
+                    onChange={(e) => setYields(prev => ({ ...prev, hydrochloricAcidYield: e.target.value }))}
                     className="md:col-span-3 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                 </div>
@@ -526,12 +530,11 @@ export default function WorkshopPage() {
                   </Label>
                   <Input
                     id={`material-${item.name}`}
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="0"
-                    value={costData.materials[item.name] !== undefined && costData.materials[item.name] !== null ? String(costData.materials[item.name]) : ''}
-                    onChange={(e) => handleValueChange('materials', item.name, e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                    value={costData.materials[item.name] ?? ''}
+                    onChange={(e) => handleValueChange('materials', item.name, e.target.value)}
                     className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                   <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
@@ -564,26 +567,22 @@ export default function WorkshopPage() {
                   <Label htmlFor={`labor-${item.name}`} className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
                     {item.name}
                   </Label>
-                  {item.name === '工资及福利' ? (
+                  {item.name === '工人工资及保险' ? (
                     <Input
                       id={`labor-${item.name}`}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0"
-                      value={costData.laborAndMaintenance[item.name] !== undefined && costData.laborAndMaintenance[item.name] !== null ? String(costData.laborAndMaintenance[item.name]) : ''}
+                      type="text"
                       readOnly
+                      value={costData.laborAndMaintenance[item.name] ?? ''}
                       className="md:col-span-2 h-12 bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-xl"
                     />
                   ) : (
                     <Input
                       id={`labor-${item.name}`}
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="0"
-                      value={costData.laborAndMaintenance[item.name] !== undefined && costData.laborAndMaintenance[item.name] !== null ? String(costData.laborAndMaintenance[item.name]) : ''}
-                      onChange={(e) => handleValueChange('laborAndMaintenance', item.name, e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                      value={costData.laborAndMaintenance[item.name] ?? ''}
+                      onChange={(e) => handleValueChange('laborAndMaintenance', item.name, e.target.value)}
                       className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                     />
                   )}
