@@ -99,6 +99,9 @@ export async function POST(request: NextRequest) {
 
     const client = getSupabaseClient();
 
+    // 先删除所有旧数据
+    await client.from('sales_data').delete().neq('id', '');
+
     // 转换数据格式
     const records = salesData.map((item: ExcelSalesData) => ({
       document_date: item.单据日期,
@@ -110,19 +113,6 @@ export async function POST(request: NextRequest) {
       total_tax_price: Number(item.价税合计) || 0,
       outbound_quantity: Number(item.出库数量) || 0,
     }));
-
-    // 获取要导入的日期范围
-    const dates = [...new Set(records.map(r => r.document_date))];
-    
-    // 先删除该日期范围内的旧数据（避免重复导入）
-    if (dates.length > 0) {
-      const minDate = dates.reduce((a, b) => a < b ? a : b);
-      const maxDate = dates.reduce((a, b) => a > b ? a : b);
-      await client.from('sales_data')
-        .delete()
-        .gte('document_date', minDate)
-        .lte('document_date', maxDate);
-    }
 
     // 直接插入所有数据
     const { data, error } = await client.from('sales_data').insert(records).select();
