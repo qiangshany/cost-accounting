@@ -106,18 +106,13 @@ const LABOR_MAINTENANCE_ITEMS: { name: string; unit: string }[] = [
   { name: '本月提取折旧', unit: '元' },
 ];
 
-// 期间费用类成本项及单位
+// 其他费用类成本项及单位
 const PERIOD_EXPENSE_ITEMS: { name: string; unit: string }[] = [
   { name: '企业管理费', unit: '元' },
   { name: '财务费用', unit: '元' },
   { name: '税金及附加', unit: '元' },
   { name: '安全费用', unit: '元' },
   { name: '销售费用', unit: '元' },
-];
-
-// 调整项及单位
-const ADJUSTMENT_ITEMS: { name: string; unit: string }[] = [
-  { name: '调减其他收入', unit: '元' },
 ];
 
 interface SummaryData {
@@ -128,7 +123,6 @@ interface SummaryData {
   };
   laborAndMaintenance: Record<string, number>;
   periodExpenses: Record<string, number>;
-  adjustments: Record<string, number>;
   workshops: string[];
   totalYield: number; // 碱产量
   totalCost: number; // 总成本
@@ -162,7 +156,6 @@ export default function AdminPage() {
     materials: { quantities: {}, costs: {}, prices: {} },
     laborAndMaintenance: {},
     periodExpenses: {},
-    adjustments: {},
     workshops: [],
     totalYield: 0,
     totalCost: 0,
@@ -174,7 +167,6 @@ export default function AdminPage() {
     materials: { quantities: {}, costs: {}, prices: {} },
     laborAndMaintenance: {},
     periodExpenses: {},
-    adjustments: {},
     workshops: [],
     totalYield: 0,
     totalCost: 0,
@@ -226,7 +218,7 @@ export default function AdminPage() {
         materials: { quantities: {}, costs: {}, prices: {} },
         laborAndMaintenance: {},
         periodExpenses: {},
-        adjustments: {},
+
         workshops: [],
         totalYield: 0,
         totalCost: 0,
@@ -257,7 +249,7 @@ export default function AdminPage() {
           materials: { quantities: {}, costs: {}, prices: {} },
           laborAndMaintenance: {},
           periodExpenses: {},
-          adjustments: {},
+  
           workshops: [],
           totalYield: 0,
           totalCost: 0,
@@ -270,7 +262,7 @@ export default function AdminPage() {
         materials: { quantities: {}, costs: {}, prices: {} },
         laborAndMaintenance: {},
         periodExpenses: {},
-        adjustments: {},
+
         workshops: [],
         totalYield: 0,
         totalCost: 0,
@@ -308,7 +300,7 @@ export default function AdminPage() {
         materials: { quantities: {}, costs: {}, prices: {} },
         laborAndMaintenance: {},
         periodExpenses: {},
-        adjustments: {},
+
         workshops: [],
         totalYield: 0,
         totalCost: 0,
@@ -342,7 +334,7 @@ export default function AdminPage() {
           materials: { quantities: {}, costs: {}, prices: {} },
           laborAndMaintenance: {},
           periodExpenses: {},
-          adjustments: {},
+  
           workshops: [],
           totalYield: 0,
           totalCost: 0,
@@ -355,7 +347,7 @@ export default function AdminPage() {
         materials: { quantities: {}, costs: {}, prices: {} },
         laborAndMaintenance: {},
         periodExpenses: {},
-        adjustments: {},
+
         workshops: [],
         totalYield: 0,
         totalCost: 0,
@@ -618,8 +610,7 @@ export default function AdminPage() {
     const hasMaterials = Object.keys(costListData.materials.quantities).length > 0;
     const hasLabor = Object.keys(costListData.laborAndMaintenance).length > 0;
     const hasPeriod = Object.keys(costListData.periodExpenses).length > 0;
-    const hasAdjustments = Object.keys(costListData.adjustments).length > 0;
-    return hasMaterials || hasLabor || hasPeriod || hasAdjustments;
+    return hasMaterials || hasLabor || hasPeriod;
   };
 
   // 清除旧数据

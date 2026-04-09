@@ -26,7 +26,7 @@ const MATERIAL_ITEMS: { name: string; unit: string }[] = [
   { name: '除盐水', unit: '吨' },
 ];
 
-// 碱车间制造费用
+// 碱车间制造费用（与生产管理部共享）
 const LABOR_MAINTENANCE_ITEMS: { name: string; unit: string }[] = [
   { name: '工人工资及保险', unit: '元' },
   { name: '维修费', unit: '元' },

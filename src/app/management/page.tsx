@@ -8,10 +8,37 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Calculator, Save, DollarSign, LogOut } from 'lucide-react';
+import { Calculator, Save, DollarSign, LogOut, TrendingUp } from 'lucide-react';
 
-// 期间费用类成本项及单位
-const PERIOD_EXPENSE_ITEMS: { name: string; unit: string }[] = [
+// 直接材料成本项目及单位（对应碱车间填报+采购部单价）
+const DIRECT_MATERIAL_ITEMS: { name: string; unit: string }[] = [
+  { name: '矿盐', unit: '吨' },
+  { name: '原盐', unit: '吨' },
+  { name: '电', unit: '度' },
+  { name: '蒸汽', unit: '吨' },
+  { name: '纯碱', unit: '千克' },
+  { name: '31%盐酸', unit: '吨' },
+  { name: '98%硫酸', unit: '吨' },
+  { name: '32%烧碱', unit: '吨' },
+  { name: '液氯', unit: '吨' },
+  { name: '三氯化铁', unit: '吨' },
+  { name: '亚硫酸钠', unit: '吨' },
+  { name: '除盐水', unit: '吨' },
+];
+
+// 制造费用项目及单位
+const MANUFACTURING_COST_ITEMS: { name: string; unit: string }[] = [
+  { name: '工人工资及保险', unit: '元' },
+  { name: '维修费', unit: '元' },
+  { name: '外协维修', unit: '元' },
+  { name: '盐泥、铲销费用', unit: '元' },
+  { name: '外协车费用', unit: '元' },
+  { name: '污水处理费用', unit: '元' },
+  { name: '本月提取折旧', unit: '元' },
+];
+
+// 其他费用项目及单位（期间费用）
+const OTHER_COST_ITEMS: { name: string; unit: string }[] = [
   { name: '企业管理费', unit: '元' },
   { name: '财务费用', unit: '元' },
   { name: '税金及附加', unit: '元' },
@@ -19,58 +46,25 @@ const PERIOD_EXPENSE_ITEMS: { name: string; unit: string }[] = [
   { name: '销售费用', unit: '元' },
 ];
 
-// 调整项及单位
-const ADJUSTMENT_ITEMS: { name: string; unit: string }[] = [
-  { name: '调减其他收入', unit: '元' },
-];
-
-// 原材料类成本项及单位
-const MATERIAL_ITEMS: { name: string; unit: string }[] = [
-  { name: '原煤', unit: '吨' },
-  { name: '矿盐', unit: '吨' },
-  { name: '原盐', unit: '吨' },
-  { name: '网电', unit: '度' },
-  { name: '纯碱', unit: '千克' },
-  { name: '三氯化铁', unit: '吨' },
-  { name: '亚硫酸钠', unit: '吨' },
-  { name: '31%盐酸', unit: '吨' },
-  { name: '32%液碱', unit: '吨' },
-  { name: '硫酸', unit: '吨' },
-  { name: '氨水', unit: '吨' },
-  { name: '柴油', unit: '吨' },
-  { name: '地表水', unit: '吨' },
-  { name: '电石渣', unit: '吨' },
-  { name: '化水药品费用', unit: '元' },
-  { name: '锅炉清焦剂等', unit: '元' },
-  { name: '脱硫、铲硝及输煤费', unit: '元' },
-];
-
-// 人工与维护类成本项及单位
-const LABOR_MAINTENANCE_ITEMS: { name: string; unit: string }[] = [
-  { name: '工资及福利', unit: '元' },
-  { name: '维修费', unit: '元' },
-  { name: '设备外出修理费用', unit: '元' },
-  { name: '外协车费用', unit: '元' },
-  { name: '折旧费用', unit: '元' },
-];
-
 interface CostData {
-  workshopData: {
-    materials: Record<string, string>;
-    laborAndMaintenance: Record<string, string>;
-    workshopLabor: Record<string, Record<string, string>>; // 按车间存储工资及福利
-  };
-  managementData: {
-    materials: Record<string, string>;
-    laborAndMaintenance: Record<string, string>;
-    periodExpenses: Record<string, string>;
-    adjustments: Record<string, string>;
-  };
+  // 直接材料：数量（来自碱车间填报）
+  directMaterials: Record<string, string>;
+  // 制造费用：金额
+  manufacturingCosts: Record<string, string>;
+  // 其他费用：金额
+  otherCosts: Record<string, string>;
 }
 
 interface MaterialCostData {
   material_name: string;
   quantity: number;
+  workshop?: string;
+}
+
+interface LaborCostData {
+  cost_item_name: string;
+  amount: number;
+  workshop?: string;
 }
 
 interface PurchasePriceData {
@@ -83,45 +77,14 @@ interface PeriodExpenseData {
   amount: number;
 }
 
-interface AdjustmentData {
-  adjustment_name: string;
-  amount: number;
-}
-
-interface WorkshopLaborItem {
-  cost_item_name: string;
-  amount: number;
-  workshop: string;
-}
-
-interface SalaryItem {
-  report_date: string;
-  cost_item_name: string;
-  product: string;
-  workshop: string;
-  amount: number;
-  unit: string;
-}
-
 export default function ManagementPage() {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<string>('氯碱');
   const [costData, setCostData] = useState<CostData>({
-    workshopData: {
-      materials: {},
-      laborAndMaintenance: {},
-      workshopLabor: {
-        '碱车间': { '工资及福利': '' },
-        '氯车间': { '工资及福利': '' },
-      },
-    },
-    managementData: {
-      materials: {},
-      laborAndMaintenance: {},
-      periodExpenses: {},
-      adjustments: {},
-    },
+    directMaterials: {},
+    manufacturingCosts: {},
+    otherCosts: {},
   });
   const [purchasePrices, setPurchasePrices] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -145,34 +108,16 @@ export default function ManagementPage() {
   // 初始化成本项
   useEffect(() => {
     const initCostData = () => {
-      const workshopMaterials: Record<string, string> = {};
-      MATERIAL_ITEMS.forEach(item => workshopMaterials[item.name] = '');
+      const directMaterials: Record<string, string> = {};
+      DIRECT_MATERIAL_ITEMS.forEach(item => directMaterials[item.name] = '');
 
-      const workshopLabor: Record<string, string> = {};
-      LABOR_MAINTENANCE_ITEMS.forEach(item => workshopLabor[item.name] = '');
+      const manufacturingCosts: Record<string, string> = {};
+      MANUFACTURING_COST_ITEMS.forEach(item => manufacturingCosts[item.name] = '');
 
-      const periodExpenses: Record<string, string> = {};
-      PERIOD_EXPENSE_ITEMS.forEach(item => periodExpenses[item.name] = '');
+      const otherCosts: Record<string, string> = {};
+      OTHER_COST_ITEMS.forEach(item => otherCosts[item.name] = '');
 
-      const adjustments: Record<string, string> = {};
-      ADJUSTMENT_ITEMS.forEach(item => adjustments[item.name] = '');
-
-      return {
-        workshopData: {
-          materials: workshopMaterials,
-          laborAndMaintenance: workshopLabor,
-          workshopLabor: {
-            '碱车间': { '工资及福利': '' },
-            '氯车间': { '工资及福利': '' },
-          },
-        },
-        managementData: {
-          materials: {},
-          laborAndMaintenance: {},
-          periodExpenses,
-          adjustments,
-        },
-      };
+      return { directMaterials, manufacturingCosts, otherCosts };
     };
 
     setCostData(initCostData());
@@ -186,107 +131,72 @@ export default function ManagementPage() {
       }
 
       try {
-        // 并行查询车间原材料数据、车间人工与维护成本数据、采购部单价数据
-        const [materialResponse, workshopLaborResponse, periodResponse, adjustmentResponse, priceResponse] = await Promise.all([
+        // 并行查询所有数据
+        const [materialResponse, laborResponse, priceResponse, periodResponse] = await Promise.all([
           fetch(`/api/material-costs?date=${selectedDate}&product=${selectedProduct}`),
           fetch(`/api/labor-maintenance-costs?date=${selectedDate}&product=${selectedProduct}`),
-          fetch(`/api/period-expenses?date=${selectedDate}&product=${selectedProduct}`),
-          fetch(`/api/adjustments?date=${selectedDate}&product=${selectedProduct}`),
           fetch(`/api/purchase-price?date=${selectedDate}`),
+          fetch(`/api/period-expenses?date=${selectedDate}&product=${selectedProduct}`),
         ]);
 
-        const [periodData, adjustmentData, materialData, priceData, workshopLaborJson] = await Promise.all([
-          periodResponse.json(),
-          adjustmentResponse.json(),
+        const [materialData, laborData, priceData, periodData] = await Promise.all([
           materialResponse.json(),
+          laborResponse.json(),
           priceResponse.json(),
-          workshopLaborResponse.json(),
+          periodResponse.json(),
         ]);
 
-        // 加载车间原材料成本数据（汇总所有车间）
+        // 加载直接材料数量（来自碱车间填报）
         if (materialData.success && materialData.data) {
           const materialMap: Record<string, string> = {};
           materialData.data.forEach((item: MaterialCostData) => {
-            const currentValue = materialMap[item.material_name] ? parseFloat(materialMap[item.material_name] || '0') || 0 : 0;
-            materialMap[item.material_name] = String(currentValue + (item.quantity || 0));
-          });
-          setCostData(prev => ({
-            ...prev,
-            workshopData: {
-              ...prev.workshopData,
-              materials: materialMap,
-            },
-          }));
-        }
-
-        // 加载车间人工与维护成本数据（汇总所有车间，按车间分别加载工资及福利）
-        if (workshopLaborJson.success && workshopLaborJson.data) {
-          const laborMap: Record<string, string> = {};
-          const workshopLaborMap: Record<string, Record<string, string>> = {
-            '碱车间': { '工资及福利': '' },
-            '氯车间': { '工资及福利': '' },
-          };
-
-          workshopLaborJson.data.forEach((item: WorkshopLaborItem) => {
-            if (item.cost_item_name === '工资及福利') {
-              // 按车间分别加载工资及福利
-              if (item.workshop && workshopLaborMap[item.workshop]) {
-                workshopLaborMap[item.workshop]['工资及福利'] = item.amount === null ? '' : String(item.amount);
-              }
-            } else {
-              // 汇总所有车间的人工与维护成本（不包括工资及福利）
-              const currentValue = laborMap[item.cost_item_name] ? parseFloat(laborMap[item.cost_item_name] || '0') || 0 : 0;
-              laborMap[item.cost_item_name] = String(currentValue + (item.amount || 0));
+            // 匹配 DIRECT_MATERIAL_ITEMS 中的项目
+            const matchedItem = DIRECT_MATERIAL_ITEMS.find(dm => dm.name === item.material_name);
+            if (matchedItem) {
+              materialMap[item.material_name] = item.quantity === null ? '' : String(item.quantity);
             }
           });
-
           setCostData(prev => ({
             ...prev,
-            workshopData: {
-              ...prev.workshopData,
-              laborAndMaintenance: laborMap,
-              workshopLabor: workshopLaborMap,
-            },
+            directMaterials: { ...prev.directMaterials, ...materialMap },
           }));
         }
 
-        // 加载期间费用数据
-        if (periodData.success && periodData.data) {
-          const periodMap: Record<string, string> = {};
-          periodData.data.forEach((item: PeriodExpenseData) => {
-            periodMap[item.expense_item_name] = item.amount === null ? '' : String(item.amount);
+        // 加载制造费用
+        if (laborData.success && laborData.data) {
+          const manufacturingMap: Record<string, string> = {};
+          laborData.data.forEach((item: LaborCostData) => {
+            // 匹配 MANUFACTURING_COST_ITEMS 中的项目
+            const matchedItem = MANUFACTURING_COST_ITEMS.find(mc => mc.name === item.cost_item_name);
+            if (matchedItem) {
+              manufacturingMap[item.cost_item_name] = item.amount === null ? '' : String(item.amount);
+            }
           });
           setCostData(prev => ({
             ...prev,
-            managementData: {
-              ...prev.managementData,
-              periodExpenses: periodMap,
-            },
+            manufacturingCosts: { ...prev.manufacturingCosts, ...manufacturingMap },
           }));
         }
 
-        // 加载调整项数据
-        if (adjustmentData.success && adjustmentData.data) {
-          const adjustmentMap: Record<string, string> = {};
-          adjustmentData.data.forEach((item: AdjustmentData) => {
-            adjustmentMap[item.adjustment_name] = item.amount === null ? '' : String(item.amount);
-          });
-          setCostData(prev => ({
-            ...prev,
-            managementData: {
-              ...prev.managementData,
-              adjustments: adjustmentMap,
-            },
-          }));
-        }
-
-        // 加载采购部单价数据
+        // 加载采购部单价
         if (priceData.success && priceData.data) {
           const priceMap: Record<string, number> = {};
           priceData.data.forEach((item: PurchasePriceData) => {
             priceMap[item.material_name] = item.price || 0;
           });
           setPurchasePrices(priceMap);
+        }
+
+        // 加载其他费用（期间费用）
+        if (periodData.success && periodData.data) {
+          const otherCostMap: Record<string, string> = {};
+          periodData.data.forEach((item: PeriodExpenseData) => {
+            otherCostMap[item.expense_item_name] = item.amount === null ? '' : String(item.amount);
+          });
+          setCostData(prev => ({
+            ...prev,
+            otherCosts: { ...prev.otherCosts, ...otherCostMap },
+          }));
         }
       } catch (error) {
         console.error('加载数据失败:', error);
@@ -297,83 +207,42 @@ export default function ManagementPage() {
   }, [selectedDate, selectedProduct]);
 
   const handleValueChange = (
-    section: 'workshop' | 'management',
-    category: 'materials' | 'laborAndMaintenance' | 'periodExpenses' | 'adjustments',
+    category: keyof CostData,
     item: string,
     value: string
   ) => {
-    setCostData(prev => {
-      if (section === 'workshop') {
-        return {
-          ...prev,
-          workshopData: {
-            ...prev.workshopData,
-            [category]: { ...prev.workshopData[category as keyof typeof prev.workshopData], [item]: value }
-          }
-        };
-      } else {
-        return {
-          ...prev,
-          managementData: {
-            ...prev.managementData,
-            [category]: { ...prev.managementData[category], [item]: value }
-          }
-        };
-      }
-    });
-  };
-
-  // 处理车间工资及福利变化
-  const handleWorkshopLaborChange = (workshop: string, itemName: string, value: string) => {
     setCostData(prev => ({
       ...prev,
-      workshopData: {
-        ...prev.workshopData,
-        workshopLabor: {
-          ...prev.workshopData.workshopLabor,
-          [workshop]: {
-            ...prev.workshopData.workshopLabor[workshop],
-            [itemName]: value,
-          },
-        },
-      },
+      [category]: { ...prev[category], [item]: value }
     }));
   };
 
-  // 计算小计（将字符串转换为数字）
-  const calculateSubtotal = (obj: Record<string, string>) => {
-    return Object.values(obj).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-  };
-
-  // 计算直接材料成本小计（原材料 × 单价）
-  const calculateDirectMaterialCost = (materials: Record<string, string>) => {
-    return MATERIAL_ITEMS.reduce((sum, item) => {
-      const quantity = parseFloat(materials[item.name]) || 0;
-      // 原材料都需要乘以单价
+  // 计算直接材料成本小计
+  const calculateDirectMaterialCost = () => {
+    return DIRECT_MATERIAL_ITEMS.reduce((sum, item) => {
+      const quantity = parseFloat(costData.directMaterials[item.name]) || 0;
       const price = purchasePrices[item.name] || 0;
       return sum + (quantity * price);
     }, 0);
   };
 
-  // 计算制造费用小计（人工与维护成本 + 工资及福利）
-  const calculateManufacturingCost = (labor: Record<string, string>, workshopLabor: Record<string, Record<string, string>>) => {
-    // 计算人工与维护成本：非"工资及福利"的项目
-    const laborCostItems = LABOR_MAINTENANCE_ITEMS.filter(item => item.name !== '工资及福利');
-    const laborCost = laborCostItems.reduce((sum, item) => {
-      return sum + (parseFloat(labor[item.name]) || 0);
+  // 计算制造费用小计
+  const calculateManufacturingCost = () => {
+    return MANUFACTURING_COST_ITEMS.reduce((sum, item) => {
+      return sum + (parseFloat(costData.manufacturingCosts[item.name]) || 0);
     }, 0);
-
-    // 计算所有车间的工资及福利总和
-    const totalSalaryAndBenefits = Object.values(workshopLabor).reduce((sum, workshop) => {
-      return sum + (parseFloat(workshop['工资及福利']) || 0);
-    }, 0);
-
-    return laborCost + totalSalaryAndBenefits;
   };
 
-  // 计算生产成本小计（直接材料 + 制造费用）
-  const calculateWorkshopProductionCost = (materials: Record<string, string>, labor: Record<string, string>, workshopLabor: Record<string, Record<string, string>>) => {
-    return calculateDirectMaterialCost(materials) + calculateManufacturingCost(labor, workshopLabor);
+  // 计算其他费用小计
+  const calculateOtherCost = () => {
+    return OTHER_COST_ITEMS.reduce((sum, item) => {
+      return sum + (parseFloat(costData.otherCosts[item.name]) || 0);
+    }, 0);
+  };
+
+  // 计算总成本
+  const calculateTotalCost = () => {
+    return calculateDirectMaterialCost() + calculateManufacturingCost() + calculateOtherCost();
   };
 
   const handleLogout = () => {
@@ -393,57 +262,49 @@ export default function ManagementPage() {
 
     setIsLoading(true);
     try {
-      // 提交工资及福利数据（按车间分别存储）
+      // 提交制造费用数据（人工与维护成本）
       // 先删除旧数据，再插入新数据
-      const workshops = ['碱车间', '氯车间'];
-
-      // 删除所有车间的工资及福利数据
-      for (const workshop of workshops) {
-        const deleteSalaryResponse = await fetch(
-          `/api/labor-maintenance-costs?date=${selectedDate}&product=${selectedProduct}&workshop=${workshop}&costItemName=工资及福利`,
-          {
-            method: 'DELETE',
-          }
-        );
-
-        if (!deleteSalaryResponse.ok) {
-          throw new Error(`删除${workshop}旧工资及福利数据失败`);
+      const deleteLaborResponse = await fetch(
+        `/api/labor-maintenance-costs?date=${selectedDate}&product=${selectedProduct}`,
+        {
+          method: 'DELETE',
         }
+      );
+
+      if (!deleteLaborResponse.ok) {
+        throw new Error('删除旧制造费用数据失败');
       }
 
-      // 提交工资及福利数据
-      const salaryItems: SalaryItem[] = [];
+      // 提交制造费用数据
+      const manufacturingItems = MANUFACTURING_COST_ITEMS
+        .filter(item => {
+          const val = parseFloat(costData.manufacturingCosts[item.name]) || 0;
+          return val > 0;
+        })
+        .map(item => ({
+          report_date: selectedDate,
+          cost_item_name: item.name,
+          product: selectedProduct,
+          workshop: '碱车间', // 制造费用统一归到碱车间
+          amount: parseFloat(costData.manufacturingCosts[item.name]) || 0,
+          unit: item.unit,
+        }));
 
-      workshops.forEach(workshop => {
-        const amountStr = costData.workshopData.workshopLabor[workshop]?.['工资及福利'] || '';
-        const amount = amountStr === '' ? 0 : parseFloat(amountStr);
-        if (amount > 0) {
-          salaryItems.push({
-            report_date: selectedDate,
-            cost_item_name: '工资及福利',
-            product: selectedProduct,
-            workshop: workshop,
-            amount: amount,
-            unit: '元',
-          });
-        }
-      });
-
-      if (salaryItems.length > 0) {
-        const salaryResponse = await fetch('/api/labor-maintenance-costs', {
+      if (manufacturingItems.length > 0) {
+        const laborResponse = await fetch('/api/labor-maintenance-costs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            items: salaryItems,
+            items: manufacturingItems,
           }),
         });
 
-        if (!salaryResponse.ok) {
-          throw new Error('工资及福利数据提交失败');
+        if (!laborResponse.ok) {
+          throw new Error('制造费用数据提交失败');
         }
       }
 
-      // 提交期间费用数据
+      // 提交其他费用数据（期间费用）
       // 先删除旧数据，再插入新数据
       const deletePeriodResponse = await fetch(
         `/api/period-expenses?date=${selectedDate}&product=${selectedProduct}`,
@@ -453,77 +314,34 @@ export default function ManagementPage() {
       );
 
       if (!deletePeriodResponse.ok) {
-        throw new Error('删除旧期间费用数据失败');
+        throw new Error('删除旧其他费用数据失败');
       }
 
-      // 提交期间费用数据（只提交有金额的项目）
-      const periodItems = PERIOD_EXPENSE_ITEMS
+      // 提交其他费用数据
+      const otherCostItems = OTHER_COST_ITEMS
         .filter(item => {
-          const valStr = costData.managementData.periodExpenses[item.name] || '';
-          const val = valStr === '' ? 0 : parseFloat(valStr);
+          const val = parseFloat(costData.otherCosts[item.name]) || 0;
           return val > 0;
         })
         .map(item => ({
           report_date: selectedDate,
           expense_item_name: item.name,
           product: selectedProduct,
-          amount: parseFloat(costData.managementData.periodExpenses[item.name]) || 0,
+          amount: parseFloat(costData.otherCosts[item.name]) || 0,
           unit: item.unit,
         }));
 
-      if (periodItems.length > 0) {
+      if (otherCostItems.length > 0) {
         const periodResponse = await fetch('/api/period-expenses', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            items: periodItems,
+            items: otherCostItems,
           }),
         });
 
         if (!periodResponse.ok) {
-          throw new Error('期间费用数据提交失败');
-        }
-      }
-
-      // 提交调整项数据
-      // 先删除旧数据，再插入新数据
-      const deleteAdjustmentResponse = await fetch(
-        `/api/adjustments?date=${selectedDate}&product=${selectedProduct}`,
-        {
-          method: 'DELETE',
-        }
-      );
-
-      if (!deleteAdjustmentResponse.ok) {
-        throw new Error('删除旧调整项数据失败');
-      }
-
-      // 提交调整项数据（只提交有金额的项目）
-      const adjustmentItems = ADJUSTMENT_ITEMS
-        .filter(item => {
-          const valStr = costData.managementData.adjustments[item.name] || '';
-          const val = valStr === '' ? 0 : parseFloat(valStr);
-          return val > 0;
-        })
-        .map(item => ({
-          report_date: selectedDate,
-          adjustment_name: item.name,
-          product: selectedProduct,
-          amount: parseFloat(costData.managementData.adjustments[item.name]) || 0,
-          unit: item.unit,
-        }));
-
-      if (adjustmentItems.length > 0) {
-        const adjustmentResponse = await fetch('/api/adjustments', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            items: adjustmentItems,
-          }),
-        });
-
-        if (!adjustmentResponse.ok) {
-          throw new Error('调整项数据提交失败');
+          throw new Error('其他费用数据提交失败');
         }
       }
 
@@ -548,7 +366,7 @@ export default function ManagementPage() {
               <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">
                 生产管理部填报
               </h1>
-              <p className="text-slate-500 dark:text-slate-400">期间费用与总成本汇总</p>
+              <p className="text-slate-500 dark:text-slate-400">成本数据汇总填报</p>
             </div>
           </div>
           <Button
@@ -591,155 +409,14 @@ export default function ManagementPage() {
           </CardContent>
         </Card>
 
-        {/* 工资及福利 */}
-        <Card className="shadow-sm border-slate-200 dark:border-slate-800">
-          <CardHeader className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/30 py-4">
-            <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
-              <div className="p-1.5 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
-                <Calculator className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              </div>
-              工资及福利（按车间填报）
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="space-y-4">
-              {/* 碱车间工资及福利 */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
-                <Label className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
-                  碱车间 - 工资及福利
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={costData.workshopData.workshopLabor['碱车间']?.['工资及福利'] ?? ''}
-                  onChange={(e) => handleWorkshopLaborChange('碱车间', '工资及福利', e.target.value)}
-                  className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
-                />
-                <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
-                  元
-                </div>
-              </div>
-
-              {/* 氯车间工资及福利 */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
-                <Label className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
-                  氯车间 - 工资及福利
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={costData.workshopData.workshopLabor['氯车间']?.['工资及福利'] ?? ''}
-                  onChange={(e) => handleWorkshopLaborChange('氯车间', '工资及福利', e.target.value)}
-                  className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
-                />
-                <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
-                  元
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 期间费用与税费 */}
-        <Card className="shadow-sm border-slate-200 dark:border-slate-800">
-          <CardHeader className="bg-violet-50 dark:bg-violet-950/30 border-b border-violet-100 dark:border-violet-900/30 py-4">
-            <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
-              <div className="p-1.5 bg-violet-100 dark:bg-violet-900/50 rounded-lg">
-                <DollarSign className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-              </div>
-              期间费用与税费
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {/* 表头 */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
-              <div className="md:col-span-7 text-xl font-semibold text-slate-700 dark:text-slate-300">成本项目</div>
-              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">数量</div>
-              <div className="md:col-span-3 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
-            </div>
-            <div className="space-y-3">
-              {PERIOD_EXPENSE_ITEMS.map((item) => (
-                <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
-                  <Label htmlFor={`period-${item.name}`} className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
-                    {item.name}
-                  </Label>
-                  <Input
-                    id={`period-${item.name}`}
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0"
-                    value={costData.managementData.periodExpenses[item.name] ?? ''}
-                    onChange={(e) => handleValueChange('management', 'periodExpenses', item.name, e.target.value)}
-                    className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
-                  />
-                  <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
-                    {item.unit}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 p-4 bg-violet-50 dark:bg-violet-950/20 rounded-lg border border-violet-100 dark:border-violet-900/30">
-              <div className="flex items-center justify-between">
-                <span className="text-xl font-semibold text-slate-700 dark:text-slate-300">小计</span>
-                <span className="text-3xl font-bold text-violet-700 dark:text-violet-400">
-                  ¥{calculateSubtotal(costData.managementData.periodExpenses).toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 调整项 */}
-        <Card className="shadow-sm border-slate-200 dark:border-slate-800">
-          <CardHeader className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 py-4">
-            <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
-              <div className="p-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg">
-                <Calculator className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-              </div>
-              调整项
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {/* 表头 */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
-              <div className="md:col-span-7 text-xl font-semibold text-slate-700 dark:text-slate-300">成本项目</div>
-              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">数量</div>
-              <div className="md:col-span-3 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
-            </div>
-            <div className="space-y-3">
-              {ADJUSTMENT_ITEMS.map((item) => (
-                <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
-                  <Label htmlFor={`adjustment-${item.name}`} className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
-                    {item.name}
-                  </Label>
-                  <Input
-                    id={`adjustment-${item.name}`}
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0"
-                    value={costData.managementData.adjustments[item.name] ?? ''}
-                    onChange={(e) => handleValueChange('management', 'adjustments', item.name, e.target.value)}
-                    className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
-                  />
-                  <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
-                    {item.unit}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 直接材料汇总 */}
+        {/* 1. 直接材料成本 */}
         <Card className="shadow-sm border-slate-200 dark:border-slate-800">
           <CardHeader className="bg-sky-50 dark:bg-sky-950/30 border-b border-sky-100 dark:border-sky-900/30 py-4">
             <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
               <div className="p-1.5 bg-sky-100 dark:bg-sky-900/50 rounded-lg">
                 <DollarSign className="w-4 h-4 text-sky-600 dark:text-sky-400" />
               </div>
-              直接材料
+              直接材料成本（数量×单价）
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
@@ -752,8 +429,8 @@ export default function ManagementPage() {
               <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">成本（元）</div>
             </div>
             <div className="space-y-3">
-              {MATERIAL_ITEMS.map((item) => {
-                const quantity = parseFloat(costData.workshopData.materials[item.name]) || 0;
+              {DIRECT_MATERIAL_ITEMS.map((item) => {
+                const quantity = parseFloat(costData.directMaterials[item.name]) || 0;
                 const price = purchasePrices[item.name] || 0;
                 const cost = quantity * price;
 
@@ -766,7 +443,7 @@ export default function ManagementPage() {
                       {quantity > 0 ? quantity.toFixed(2) : '-'}
                     </div>
                     <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right">
-                      {price > 0 ? price : '-'}
+                      {price > 0 ? price.toFixed(2) : '-'}
                     </div>
                     <div className="md:col-span-2 text-xl text-slate-500 dark:text-slate-500 text-right">
                       {item.unit}
@@ -782,14 +459,14 @@ export default function ManagementPage() {
               <div className="flex items-center justify-between">
                 <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                 <span className="text-xl font-bold text-sky-700 dark:text-sky-400">
-                  ¥{calculateDirectMaterialCost(costData.workshopData.materials).toFixed(2)}
+                  ¥{calculateDirectMaterialCost().toFixed(2)}
                 </span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* 制造费用汇总 */}
+        {/* 2. 制造费用 */}
         <Card className="shadow-sm border-slate-200 dark:border-slate-800">
           <CardHeader className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/30 py-4">
             <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -807,44 +484,22 @@ export default function ManagementPage() {
               <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
             </div>
             <div className="space-y-3">
-              {/* 工资及福利（汇总两个车间） */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
-                <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
-                  工资及福利（碱车间）
-                </div>
-                <div className="md:col-span-3 text-xl text-slate-700 dark:text-slate-300 text-right">
-                  {parseFloat(costData.workshopData.workshopLabor['碱车间']?.['工资及福利'] || '') || 0 > 0 
-                    ? (parseFloat(costData.workshopData.workshopLabor['碱车间']?.['工资及福利'] || '') || 0).toFixed(2)
-                    : '-'}
-                </div>
-                <div className="md:col-span-2 text-xl text-slate-500 dark:text-slate-500 text-center">
-                  元
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
-                <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
-                  工资及福利（氯车间）
-                </div>
-                <div className="md:col-span-3 text-xl text-slate-700 dark:text-slate-300 text-right">
-                  {parseFloat(costData.workshopData.workshopLabor['氯车间']?.['工资及福利'] || '') || 0 > 0 
-                    ? (parseFloat(costData.workshopData.workshopLabor['氯车间']?.['工资及福利'] || '') || 0).toFixed(2)
-                    : '-'}
-                </div>
-                <div className="md:col-span-2 text-xl text-slate-500 dark:text-slate-500 text-center">
-                  元
-                </div>
-              </div>
-              {/* 其他制造费用 */}
-              {LABOR_MAINTENANCE_ITEMS.filter(item => item.name !== '工资及福利').map((item) => {
-                const amount = parseFloat(costData.workshopData.laborAndMaintenance[item.name]) || 0;
+              {MANUFACTURING_COST_ITEMS.map((item) => {
+                const amount = parseFloat(costData.manufacturingCosts[item.name]) || 0;
                 return (
                   <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
-                    <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
+                    <Label htmlFor={`manufacturing-${item.name}`} className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
                       {item.name}
-                    </div>
-                    <div className="md:col-span-3 text-xl text-slate-700 dark:text-slate-300 text-right">
-                      {amount > 0 ? amount.toFixed(2) : '-'}
-                    </div>
+                    </Label>
+                    <Input
+                      id={`manufacturing-${item.name}`}
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={costData.manufacturingCosts[item.name] ?? ''}
+                      onChange={(e) => handleValueChange('manufacturingCosts', item.name, e.target.value)}
+                      className="md:col-span-3 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
+                    />
                     <div className="md:col-span-2 text-xl text-slate-500 dark:text-slate-500 text-center">
                       {item.unit}
                     </div>
@@ -856,19 +511,19 @@ export default function ManagementPage() {
               <div className="flex items-center justify-between">
                 <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                 <span className="text-xl font-bold text-amber-700 dark:text-amber-400">
-                  ¥{calculateManufacturingCost(costData.workshopData.laborAndMaintenance, costData.workshopData.workshopLabor).toFixed(2)}
+                  ¥{calculateManufacturingCost().toFixed(2)}
                 </span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* 其他费用汇总 */}
+        {/* 3. 其他费用 */}
         <Card className="shadow-sm border-slate-200 dark:border-slate-800">
           <CardHeader className="bg-violet-50 dark:bg-violet-950/30 border-b border-violet-100 dark:border-violet-900/30 py-4">
             <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
               <div className="p-1.5 bg-violet-100 dark:bg-violet-900/50 rounded-lg">
-                <DollarSign className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                <TrendingUp className="w-4 h-4 text-violet-600 dark:text-violet-400" />
               </div>
               其他费用
             </CardTitle>
@@ -881,16 +536,22 @@ export default function ManagementPage() {
               <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
             </div>
             <div className="space-y-3">
-              {PERIOD_EXPENSE_ITEMS.map((item) => {
-                const amount = parseFloat(costData.managementData.periodExpenses[item.name]) || 0;
+              {OTHER_COST_ITEMS.map((item) => {
+                const amount = parseFloat(costData.otherCosts[item.name]) || 0;
                 return (
                   <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
-                    <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
+                    <Label htmlFor={`other-${item.name}`} className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
                       {item.name}
-                    </div>
-                    <div className="md:col-span-3 text-xl text-slate-700 dark:text-slate-300 text-right">
-                      {amount > 0 ? amount.toFixed(2) : '-'}
-                    </div>
+                    </Label>
+                    <Input
+                      id={`other-${item.name}`}
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={costData.otherCosts[item.name] ?? ''}
+                      onChange={(e) => handleValueChange('otherCosts', item.name, e.target.value)}
+                      className="md:col-span-3 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
+                    />
                     <div className="md:col-span-2 text-xl text-slate-500 dark:text-slate-500 text-center">
                       {item.unit}
                     </div>
@@ -902,47 +563,42 @@ export default function ManagementPage() {
               <div className="flex items-center justify-between">
                 <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                 <span className="text-xl font-bold text-violet-700 dark:text-violet-400">
-                  ¥{calculateSubtotal(costData.managementData.periodExpenses).toFixed(2)}
+                  ¥{calculateOtherCost().toFixed(2)}
                 </span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* 总成本汇总 */}
+        {/* 4. 成本汇总 */}
         <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-gradient-to-br from-blue-50 via-white to-violet-50 dark:from-blue-950/30 dark:via-slate-900 dark:to-violet-950/30">
           <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
-            <CardTitle className="text-xl text-center text-slate-800 dark:text-slate-200">总成本汇总</CardTitle>
+            <CardTitle className="text-xl text-center text-slate-800 dark:text-slate-200">成本汇总</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="space-y-4">
-              {/* 直接材料成本小计 */}
               <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
                 <span className="text-xl text-slate-600 dark:text-slate-400">直接材料成本小计</span>
-                <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-                  ¥{calculateDirectMaterialCost(costData.workshopData.materials).toFixed(2)}
+                <span className="text-3xl font-bold text-sky-700 dark:text-sky-400">
+                  ¥{calculateDirectMaterialCost().toFixed(2)}
                 </span>
               </div>
-              {/* 制造费用小计 */}
               <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
                 <span className="text-xl text-slate-600 dark:text-slate-400">制造费用小计</span>
-                <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-                  ¥{calculateManufacturingCost(costData.workshopData.laborAndMaintenance, costData.workshopData.workshopLabor).toFixed(2)}
+                <span className="text-3xl font-bold text-amber-700 dark:text-amber-400">
+                  ¥{calculateManufacturingCost().toFixed(2)}
                 </span>
               </div>
-              {/* 其他费用小计 */}
               <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
                 <span className="text-xl text-slate-600 dark:text-slate-400">其他费用小计</span>
-                <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-                  ¥{calculateSubtotal(costData.managementData.periodExpenses).toFixed(2)}
+                <span className="text-3xl font-bold text-violet-700 dark:text-violet-400">
+                  ¥{calculateOtherCost().toFixed(2)}
                 </span>
               </div>
-              {/* 总成本合计 */}
-              <div className="flex items-center justify-between py-4 px-6 bg-gradient-to-r from-violet-600 to-violet-700 dark:from-violet-700 dark:to-violet-800 text-white rounded-xl mt-6 shadow-md">
+              <div className="flex items-center justify-between py-4 px-6 bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-700 dark:to-emerald-800 text-white rounded-xl mt-6 shadow-md">
                 <span className="text-2xl font-bold">总成本合计</span>
                 <span className="text-4xl font-bold">
-                  ¥{(calculateWorkshopProductionCost(costData.workshopData.materials, costData.workshopData.laborAndMaintenance, costData.workshopData.workshopLabor) +
-                      calculateSubtotal(costData.managementData.periodExpenses)).toFixed(2)}
+                  ¥{calculateTotalCost().toFixed(2)}
                 </span>
               </div>
             </div>
@@ -964,4 +620,3 @@ export default function ManagementPage() {
     </div>
   );
 }
-// Management page component
