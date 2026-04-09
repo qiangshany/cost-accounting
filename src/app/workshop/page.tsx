@@ -37,6 +37,9 @@ const LABOR_MAINTENANCE_ITEMS: { name: string; unit: string }[] = [
   { name: '本月提取折旧', unit: '元' },
 ];
 
+// 工资及福利的源字段名（生产管理部填报的字段名）
+const SALARY_SOURCE_KEY = '工资及福利';
+
 interface CostData {
   materials: Record<string, string>;  // 改为字符串存储输入值
   laborAndMaintenance: Record<string, string>;
@@ -179,8 +182,16 @@ export default function WorkshopPage() {
           const laborMap: Record<string, string> = {};
 
           laborData.data.forEach((item: LaborCostData) => {
-            // 直接使用当前车间的数据（包括工资及福利）
-            laborMap[item.cost_item_name] = item.amount ? String(item.amount) : '';
+            // 优先使用 cost_item_name 直接匹配
+            if (item.cost_item_name in laborMap || laborMap[item.cost_item_name] !== undefined) {
+              // 如果已存在，跳过（因为已有初始化值）
+            }
+            laborMap[item.cost_item_name] = item.amount === null ? '' : String(item.amount);
+            
+            // 如果是"工资及福利"，同时映射到"工人工资及保险"
+            if (item.cost_item_name === SALARY_SOURCE_KEY) {
+              laborMap['工人工资及保险'] = item.amount === null ? '' : String(item.amount);
+            }
           });
 
           setCostData(prev => ({
