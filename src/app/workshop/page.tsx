@@ -7,8 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
-import { Save, Factory, TrendingUp, Shield, LogOut } from 'lucide-react';
+import { format } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
+import { Save, Factory, TrendingUp, Shield, LogOut, Calendar as CalendarIcon } from 'lucide-react';
 
 // 碱车间直接材料（按用户要求配置）
 const MATERIAL_ITEMS: { name: string; unit: string }[] = [
@@ -71,6 +75,7 @@ export default function WorkshopPage() {
   const router = useRouter();
   const [selectedWorkshop, setSelectedWorkshop] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string>('氯碱');
   const [costData, setCostData] = useState<CostData>({
     materials: {},
@@ -84,6 +89,9 @@ export default function WorkshopPage() {
     chlorineYield: '', // 氯产量
     hydrochloricAcidYield: '', // 盐酸产量
   });
+
+  // 将日期字符串转换为Date对象
+  const selectedDateObj = selectedDate ? new Date(selectedDate + 'T00:00:00') : undefined;
 
   // 检查登录状态和角色
   useEffect(() => {
@@ -437,14 +445,28 @@ export default function WorkshopPage() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="date" className="text-sm font-medium text-slate-500 dark:text-slate-500">日期</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
-                />
+                <Label className="text-sm font-medium text-slate-500 dark:text-slate-500">日期</Label>
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-10 w-full justify-start text-left bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDate ? format(selectedDateObj!, 'yyyy-MM-dd', { locale: zhCN }) : "选择日期"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDateObj}
+                      onSelect={(date) => {
+                        if (date) {
+                          setSelectedDate(format(date, 'yyyy-MM-dd'));
+                          setIsCalendarOpen(false);
+                        }
+                      }}
+                      locale={zhCN}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </CardContent>

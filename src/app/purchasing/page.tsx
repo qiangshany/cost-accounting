@@ -6,8 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
-import { ShoppingCart, Save, LogOut, DollarSign } from 'lucide-react';
+import { format } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
+import { ShoppingCart, Save, LogOut, DollarSign, Calendar as CalendarIcon } from 'lucide-react';
 
 // 碱车间材料单价（单位对应碱车间数量填报）
 const MATERIAL_ITEMS: { name: string; unit: string }[] = [
@@ -32,6 +36,7 @@ interface PriceData {
 export default function PurchasingPage() {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [priceData, setPriceData] = useState<PriceData>({
     materials: {},
   });
@@ -52,6 +57,9 @@ export default function PurchasingPage() {
     const today = new Date().toISOString().split('T')[0];
     setSelectedDate(today);
   }, []);
+
+  // 将日期字符串转换为Date对象
+  const selectedDateObj = selectedDate ? new Date(selectedDate + 'T00:00:00') : undefined;
 
   // 初始化价格项
   useEffect(() => {
@@ -194,14 +202,28 @@ interface PurchasePriceItem {
           <CardContent className="pt-2">
             <div className="grid gap-2 grid-cols-1 md:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="date" className="text-sm font-medium text-slate-500 dark:text-slate-500">日期</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
-                />
+                <Label className="text-sm font-medium text-slate-500 dark:text-slate-500">日期</Label>
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-10 w-full justify-start text-left bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDate ? format(selectedDateObj!, 'yyyy-MM-dd', { locale: zhCN }) : "选择日期"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDateObj}
+                      onSelect={(date) => {
+                        if (date) {
+                          setSelectedDate(format(date, 'yyyy-MM-dd'));
+                          setIsCalendarOpen(false);
+                        }
+                      }}
+                      locale={zhCN}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </CardContent>
