@@ -9,22 +9,20 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { ShoppingCart, Save, LogOut, DollarSign } from 'lucide-react';
 
-// 原材料类成本项及单位（仅需要填写单价的材料，单位不是"元"的）
+// 碱车间材料单价（单位对应碱车间数量填报）
 const MATERIAL_ITEMS: { name: string; unit: string }[] = [
-  { name: '原煤', unit: '元/吨' },
   { name: '矿盐', unit: '元/吨' },
   { name: '原盐', unit: '元/吨' },
-  { name: '网电', unit: '元/度' },
+  { name: '电', unit: '元/度' },
+  { name: '蒸汽', unit: '元/吨' },
   { name: '纯碱', unit: '元/千克' },
+  { name: '31%盐酸', unit: '元/吨' },
+  { name: '98%硫酸', unit: '元/吨' },
+  { name: '32%烧碱', unit: '元/吨' },
+  { name: '液氯', unit: '元/吨' },
   { name: '三氯化铁', unit: '元/吨' },
   { name: '亚硫酸钠', unit: '元/吨' },
-  { name: '31%盐酸', unit: '元/吨' },
-  { name: '32%液碱', unit: '元/吨' },
-  { name: '硫酸', unit: '元/吨' },
-  { name: '氨水', unit: '元/吨' },
-  { name: '柴油', unit: '元/吨' },
-  { name: '地表水', unit: '元/吨' },
-  { name: '电石渣', unit: '元/吨' },
+  { name: '除盐水', unit: '元/吨' },
 ];
 
 interface PriceData {

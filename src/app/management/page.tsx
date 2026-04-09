@@ -12,11 +12,11 @@ import { Calculator, Save, DollarSign, LogOut } from 'lucide-react';
 
 // 期间费用类成本项及单位
 const PERIOD_EXPENSE_ITEMS: { name: string; unit: string }[] = [
-  { name: '管理费用', unit: '元' },
+  { name: '企业管理费', unit: '元' },
   { name: '财务费用', unit: '元' },
+  { name: '税金及附加', unit: '元' },
   { name: '安全费用', unit: '元' },
   { name: '销售费用', unit: '元' },
-  { name: '营业税金及附加', unit: '元' },
 ];
 
 // 调整项及单位

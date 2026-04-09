@@ -10,34 +10,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { Save, Factory, TrendingUp, Shield, LogOut } from 'lucide-react';
 
-// 原材料类成本项及单位
+// 碱车间直接材料（按用户要求配置）
 const MATERIAL_ITEMS: { name: string; unit: string }[] = [
-  { name: '原煤', unit: '吨' },
   { name: '矿盐', unit: '吨' },
   { name: '原盐', unit: '吨' },
-  { name: '网电', unit: '度' },
+  { name: '电', unit: '度' },
+  { name: '蒸汽', unit: '吨' },
   { name: '纯碱', unit: '千克' },
+  { name: '31%盐酸', unit: '吨' },
+  { name: '98%硫酸', unit: '吨' },
+  { name: '32%烧碱', unit: '吨' },
+  { name: '液氯', unit: '吨' },
   { name: '三氯化铁', unit: '吨' },
   { name: '亚硫酸钠', unit: '吨' },
-  { name: '31%盐酸', unit: '吨' },
-  { name: '32%液碱', unit: '吨' },
-  { name: '硫酸', unit: '吨' },
-  { name: '氨水', unit: '吨' },
-  { name: '柴油', unit: '吨' },
-  { name: '地表水', unit: '吨' },
-  { name: '电石渣', unit: '吨' },
-  { name: '化水药品费用', unit: '元' },
-  { name: '锅炉清焦剂等', unit: '元' },
-  { name: '脱硫、铲硝及输煤费', unit: '元' },
+  { name: '除盐水', unit: '吨' },
 ];
 
-// 人工与维护类成本项及单位
+// 碱车间制造费用
 const LABOR_MAINTENANCE_ITEMS: { name: string; unit: string }[] = [
-  { name: '工资及福利', unit: '元' },
+  { name: '工人工资及保险', unit: '元', readonly: true },
   { name: '维修费', unit: '元' },
-  { name: '设备外出修理费用', unit: '元' },
+  { name: '外协维修', unit: '元' },
+  { name: '盐泥、铲销费用', unit: '元' },
   { name: '外协车费用', unit: '元' },
-  { name: '折旧费用', unit: '元' },
+  { name: '污水处理费用', unit: '元' },
+  { name: '本月提取折旧', unit: '元' },
 ];
 
 interface CostData {

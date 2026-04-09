@@ -79,43 +79,40 @@ interface SalesData {
   出库数量: number;
 }
 
-// 原材料类成本项及单位
+// 碱车间直接材料
 const MATERIAL_ITEMS: { name: string; unit: string }[] = [
-  { name: '原煤', unit: '吨' },
   { name: '矿盐', unit: '吨' },
   { name: '原盐', unit: '吨' },
-  { name: '网电', unit: '度' },
+  { name: '电', unit: '度' },
+  { name: '蒸汽', unit: '吨' },
   { name: '纯碱', unit: '千克' },
+  { name: '31%盐酸', unit: '吨' },
+  { name: '98%硫酸', unit: '吨' },
+  { name: '32%烧碱', unit: '吨' },
+  { name: '液氯', unit: '吨' },
   { name: '三氯化铁', unit: '吨' },
   { name: '亚硫酸钠', unit: '吨' },
-  { name: '31%盐酸', unit: '吨' },
-  { name: '32%液碱', unit: '吨' },
-  { name: '硫酸', unit: '吨' },
-  { name: '氨水', unit: '吨' },
-  { name: '柴油', unit: '吨' },
-  { name: '地表水', unit: '吨' },
-  { name: '电石渣', unit: '吨' },
-  { name: '化水药品费用', unit: '元' },
-  { name: '锅炉清焦剂等', unit: '元' },
-  { name: '脱硫、铲硝及输煤费', unit: '元' },
+  { name: '除盐水', unit: '吨' },
 ];
 
-// 人工与维护类成本项及单位
+// 碱车间制造费用
 const LABOR_MAINTENANCE_ITEMS: { name: string; unit: string }[] = [
-  { name: '工资及福利', unit: '元' },
+  { name: '工人工资及保险', unit: '元' },
   { name: '维修费', unit: '元' },
-  { name: '设备外出修理费用', unit: '元' },
+  { name: '外协维修', unit: '元' },
+  { name: '盐泥、铲销费用', unit: '元' },
   { name: '外协车费用', unit: '元' },
-  { name: '折旧费用', unit: '元' },
+  { name: '污水处理费用', unit: '元' },
+  { name: '本月提取折旧', unit: '元' },
 ];
 
 // 期间费用类成本项及单位
 const PERIOD_EXPENSE_ITEMS: { name: string; unit: string }[] = [
-  { name: '管理费用', unit: '元' },
+  { name: '企业管理费', unit: '元' },
   { name: '财务费用', unit: '元' },
+  { name: '税金及附加', unit: '元' },
   { name: '安全费用', unit: '元' },
   { name: '销售费用', unit: '元' },
-  { name: '营业税金及附加', unit: '元' },
 ];
 
 // 调整项及单位
@@ -285,8 +282,10 @@ export default function AdminPage() {
   };
   
   // 加载成本分析的成本数据
-  // 规则：使用销售日期的前一天进行计算
-  // 例如：销售日期 4.5-4.8，使用成本日期 4.4-4.7
+  // 规则：
+  // - 单日（如4.8）：计算前一天的吨成本（4.7）
+  // - 区间（如4.3-4.5）：计算区间前移一天的吨成本（4.2-4.4）
+  // 均价与日期/日期区间对应，不错位
   const loadAnalysisCostData = async () => {
     if (!dateRange.from || !dateRange.to) {
       return;
@@ -294,25 +293,14 @@ export default function AdminPage() {
 
     setIsLoading(true);
     
-    // 在客户端计算今天的日期，避免SSR时区问题
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const salesToDate = new Date(dateRange.to);
-    salesToDate.setHours(0, 0, 0, 0);
-    
     // 成本数据的日期区间是销售日期区间的前一天
+    // 单日：from=4.8, to=4.8 → queryFrom=4.7, queryTo=4.7
+    // 区间：from=4.3, to=4.5 → queryFrom=4.2, queryTo=4.4
     let queryFromDate = new Date(dateRange.from);
     queryFromDate.setDate(queryFromDate.getDate() - 1);
     
     let queryEndDate = new Date(dateRange.to);
     queryEndDate.setDate(queryEndDate.getDate() - 1);
-    
-    // 如果结束日期包含今天，成本结束日期改为昨天
-    if (salesToDate.getTime() >= today.getTime()) {
-      queryEndDate = new Date(today);
-      queryEndDate.setDate(queryEndDate.getDate() - 1);
-    }
     
     // 如果查询结束日期早于开始日期，直接返回空数据
     if (queryEndDate < queryFromDate) {
@@ -332,6 +320,9 @@ export default function AdminPage() {
     
     const fromDateStr = format(queryFromDate, 'yyyy-MM-dd');
     const toDateStr = format(queryEndDate, 'yyyy-MM-dd');
+    
+    console.log('[成本分析] 销售日期:', format(dateRange.from, 'yyyy-MM-dd'), '-', format(dateRange.to, 'yyyy-MM-dd'));
+    console.log('[成本分析] 成本日期:', fromDateStr, '-', toDateStr);
     
     try {
       const response = await fetch(
@@ -506,23 +497,37 @@ export default function AdminPage() {
         throw new Error(`缺少必要字段: ${missingFields.join(', ')}`);
       }
 
-      // Excel 日期序列号转换为日期字符串 (YYYY-MM-DD)
+      // Excel 日期转换为 YYYY-MM-DD 格式
       const excelDateToString = (value: unknown): string => {
         if (!value) return '';
 
         // 如果是字符串格式的日期
         if (typeof value === 'string') {
-          // 检查是否是有效的日期格式
-          const date = new Date(value);
-          if (!isNaN(date.getTime())) {
-            // 直接提取 YYYY-MM-DD 部分
-            return date.toISOString().split('T')[0];
-          }
+          const trimmed = value.trim();
+          
           // 如果已经是 YYYY-MM-DD 格式，直接返回
-          if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-            return value;
+          if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+            return trimmed;
           }
-          return value;
+          
+          // 解析 YYYY/M/D 格式（补充缺失的0）
+          const slashMatch = trimmed.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+          if (slashMatch) {
+            const [, year, month, day] = slashMatch;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          }
+          
+          // 尝试解析其他日期格式
+          const date = new Date(trimmed);
+          if (!isNaN(date.getTime())) {
+            // 使用本地日期部分，避免时区偏移
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          }
+          
+          return trimmed;
         }
 
         // 如果是数字，视为 Excel 日期序列号
@@ -531,7 +536,11 @@ export default function AdminPage() {
           // 正确转换：1899-12-30 是 Excel 日期 0
           const excelEpoch = new Date(Date.UTC(1899, 11, 30));
           const date = new Date(excelEpoch.getTime() + value * 86400000);
-          return date.toISOString().split('T')[0];
+          // 使用本地日期部分
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
         }
 
         return String(value);
