@@ -97,13 +97,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 限制单批插入数量，分批处理
-    const BATCH_SIZE = 1000;
-    const totalRecords = salesData.length;
-    let insertedCount = 0;
-    let failedCount = 0;
-    const failedRecords: number[] = [];
-
     const client = getSupabaseClient();
 
     // 转换数据格式
@@ -112,34 +105,38 @@ export async function POST(request: NextRequest) {
       customer: item.客户,
       salesman: item.业务员,
       material_name: item.物料名称,
-      planned_quantity: item.销售计划数量,
-      tax_included_price: item.含税净价,
-      total_tax_price: item.价税合计,
-      outbound_quantity: item.出库数量,
+      planned_quantity: Number(item.销售计划数量) || 0,
+      tax_included_price: Number(item.含税净价) || 0,
+      total_tax_price: Number(item.价税合计) || 0,
+      outbound_quantity: Number(item.出库数量) || 0,
     }));
 
-    // 分批插入数据
-    for (let i = 0; i < records.length; i += BATCH_SIZE) {
-      const batch = records.slice(i, i + BATCH_SIZE);
-      const { data, error } = await client.from('sales_data').insert(batch).select();
-
-      if (error) {
-        failedCount += batch.length;
-        failedRecords.push(i / BATCH_SIZE + 1);
-        console.error(`批次 ${i / BATCH_SIZE + 1} 插入失败:`, error);
-      } else {
-        insertedCount += data?.length || 0;
-      }
+    // 获取要导入的日期范围
+    const dates = [...new Set(records.map(r => r.document_date))];
+    
+    // 先删除该日期范围内的旧数据（避免重复导入）
+    if (dates.length > 0) {
+      const minDate = dates.reduce((a, b) => a < b ? a : b);
+      const maxDate = dates.reduce((a, b) => a > b ? a : b);
+      await client.from('sales_data')
+        .delete()
+        .gte('document_date', minDate)
+        .lte('document_date', maxDate);
     }
 
-    if (insertedCount === 0 && failedCount > 0) {
-      throw new Error(`所有批次插入失败，共 ${failedCount} 条数据`);
+    // 直接插入所有数据
+    const { data, error } = await client.from('sales_data').insert(records).select();
+
+    if (error) {
+      throw new Error(`插入失败: ${error.message}`);
     }
+
+    const insertedCount = data?.length || 0;
 
     return NextResponse.json({
       success: true,
-      data: { insertedCount, failedCount },
-      message: `成功导入 ${insertedCount} 条销售数据${failedCount > 0 ? `，${failedCount} 条失败` : ''}`,
+      data: { insertedCount, failedCount: 0 },
+      message: `成功导入 ${insertedCount} 条销售数据`,
     });
   } catch (error) {
     console.error('保存销售数据错误:', error);
