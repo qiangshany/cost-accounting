@@ -14,6 +14,58 @@ import { zhCN } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { cn } from '@/lib/utils';
 
+// 安全解析数值函数 - 处理各种异常输入
+const safeParseNumber = (value: unknown): number => {
+  if (value === null || value === undefined || value === '') {
+    return 0;
+  }
+  
+  // 如果已经是数字类型
+  if (typeof value === 'number') {
+    // 检查是否是有效数字（非 NaN、非 Infinity）
+    if (Number.isFinite(value)) {
+      return value;
+    }
+    return 0;
+  }
+  
+  // 如果是字符串
+  if (typeof value === 'string') {
+    // 去除首尾空格
+    const trimmed = value.trim();
+    if (trimmed === '') return 0;
+    
+    // 尝试直接转换
+    const num = Number(trimmed);
+    if (Number.isFinite(num)) {
+      return num;
+    }
+    
+    // 如果字符串包含特殊格式（如科学计数法），尝试解析
+    // 例如: "{335 -1 false finite true}" 这种格式
+    const match = trimmed.match(/[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?/);
+    if (match) {
+      const parsed = parseFloat(match[0]);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    
+    return 0;
+  }
+  
+  // 对于对象类型（如 xlsx 库返回的特殊对象）
+  if (typeof value === 'object') {
+    // 尝试获取 valueOf 或 toString
+    const strValue = String(value);
+    const match = strValue.match(/[-+]?\d*\.?\d+/);
+    if (match) {
+      const parsed = parseFloat(match[0]);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+  }
+  
+  return 0;
+};
+
 // 销售数据接口
 interface SalesData {
   单据日期: string;
@@ -455,10 +507,10 @@ export default function AdminPage() {
         客户: String(row['客户'] || ''),
         业务员: String(row['业务员'] || ''),
         物料名称: String(row['物料名称'] || ''),
-        销售计划数量: Number(row['主数量']) || 0,
-        含税净价: Number(row['主含税净价']) || 0,
-        价税合计: Number(row['价税合计']) || 0,
-        出库数量: Number(row['出库主数量']) || 0,
+        销售计划数量: safeParseNumber(row['主数量']),
+        含税净价: safeParseNumber(row['主含税净价']),
+        价税合计: safeParseNumber(row['价税合计']),
+        出库数量: safeParseNumber(row['出库主数量']),
       }));
 
       // 保存到数据库

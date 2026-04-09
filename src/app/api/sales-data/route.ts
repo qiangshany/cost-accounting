@@ -1,6 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+// 安全解析数值函数
+const safeParseNumber = (value: unknown): number => {
+  if (value === null || value === undefined || value === '') {
+    return 0;
+  }
+  
+  // 如果已经是数字类型
+  if (typeof value === 'number') {
+    if (Number.isFinite(value)) {
+      return value;
+    }
+    return 0;
+  }
+  
+  // 如果是字符串
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed === '') return 0;
+    
+    const num = Number(trimmed);
+    if (Number.isFinite(num)) {
+      return num;
+    }
+    
+    const match = trimmed.match(/[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?/);
+    if (match) {
+      const parsed = parseFloat(match[0]);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    
+    return 0;
+  }
+  
+  // 对于对象类型
+  if (typeof value === 'object') {
+    const strValue = String(value);
+    const match = strValue.match(/[-+]?\d*\.?\d+/);
+    if (match) {
+      const parsed = parseFloat(match[0]);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+  }
+  
+  return 0;
+};
+
 // Excel数据类型定义
 interface ExcelSalesData {
   单据日期: string;
@@ -56,10 +102,10 @@ export async function GET(request: NextRequest) {
       客户: item.customer,
       业务员: item.salesman,
       物料名称: item.material_name,
-      销售计划数量: parseFloat(item.planned_quantity?.toString() || '0'),
-      含税净价: parseFloat(item.tax_included_price?.toString() || '0'),
-      价税合计: parseFloat(item.total_tax_price?.toString() || '0'),
-      出库数量: parseFloat(item.outbound_quantity?.toString() || '0'),
+      销售计划数量: safeParseNumber(item.planned_quantity),
+      含税净价: safeParseNumber(item.tax_included_price),
+      价税合计: safeParseNumber(item.total_tax_price),
+      出库数量: safeParseNumber(item.outbound_quantity),
     }));
 
     return NextResponse.json({
@@ -108,10 +154,10 @@ export async function POST(request: NextRequest) {
       customer: item.客户,
       salesman: item.业务员,
       material_name: item.物料名称,
-      planned_quantity: Number(item.销售计划数量) || 0,
-      tax_included_price: Number(item.含税净价) || 0,
-      total_tax_price: Number(item.价税合计) || 0,
-      outbound_quantity: Number(item.出库数量) || 0,
+      planned_quantity: safeParseNumber(item.销售计划数量),
+      tax_included_price: safeParseNumber(item.含税净价),
+      total_tax_price: safeParseNumber(item.价税合计),
+      outbound_quantity: safeParseNumber(item.出库数量),
     }));
 
     // 直接插入所有数据
