@@ -379,36 +379,63 @@ export default function AdminPage() {
     setIsLoading(true);
     
     try {
-      const pageSize = 1000;
-      let page = 0;
-      let allData: SalesData[] = [];
-      let hasMore = true;
+      console.log('[前端] 开始加载销售数据');
 
-      while (hasMore) {
-        const params = new URLSearchParams();
-        params.append('page', page.toString());
-        params.append('pageSize', pageSize.toString());
+      // 使用 fetchAll 参数一次性获取所有数据
+      const response = await fetch('/api/sales-data?fetchAll=true');
 
-        const response = await fetch(`/api/sales-data?${params.toString()}`);
-
-        if (!response.ok) {
-          throw new Error('加载数据失败');
-        }
-
-        const result = await response.json();
-
-        if (result.success && result.data) {
-          allData = [...allData, ...result.data];
-          hasMore = result.hasMore || false;
-          page++;
-        } else {
-          hasMore = false;
-        }
+      if (!response.ok) {
+        throw new Error('加载数据失败');
       }
 
-      setSalesData(allData);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        console.log('[前端] 数据加载成功:', result.data.length, '条');
+        setSalesData(result.data);
+
+        // ========== 步骤7: 提取统计信息 ==========
+        // 7.1 提取唯一日期并排序
+        const dates = result.data
+          .map((item: SalesData) => item.单据日期)
+          .filter(Boolean) as string[];
+        
+        const uniqueDates = [...new Set(dates)].sort((a, b) => 
+          new Date(b).getTime() - new Date(a).getTime()
+        );
+        
+        const latestDate = uniqueDates[0];
+        console.log('[前端] 数据中最晚日期:', latestDate);
+
+        // 7.2 设置默认日期区间
+        if (latestDate) {
+          const parsedDate = new Date(latestDate);
+          setDateRange({ 
+            from: parsedDate, 
+            to: parsedDate 
+          });
+        } else {
+          // 没有数据时使用系统当前日期
+          const today = new Date();
+          setDateRange({ from: today, to: today });
+        }
+
+        // 7.3 提取唯一物料
+        const materials = [...new Set(
+          result.data.map((item: SalesData) => normalizeMaterialName(item.物料名称))
+        )];
+        
+        console.log('[前端] 可选物料:', materials);
+
+        // 7.4 设置默认物料
+        if (materials.includes('32%烧碱')) {
+          setSelectedMaterial('32%烧碱');
+        } else if (materials.length > 0) {
+          setSelectedMaterial(materials[0] as string);
+        }
+      }
     } catch (error) {
-      console.error('加载销售数据失败:', error);
+      console.error('[前端] 加载销售数据失败:', error);
     } finally {
       setIsLoading(false);
     }
@@ -453,18 +480,24 @@ export default function AdminPage() {
     setIsUploading(true);
 
     try {
+      // ========== 步骤1: 读取文件 ==========
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
+      const workbook = XLSX.read(data, { type: 'array' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
+
+      // ========== 步骤2: 解析Excel (raw: false 保留原始格式) ==========
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false }) as Record<string, string>[];
+
+      console.log('解析到的原始数据行数:', jsonData.length);
+      console.log('列名:', Object.keys(jsonData[0] || {}));
 
       // 验证数据结构
       if (!Array.isArray(jsonData) || jsonData.length === 0) {
         throw new Error('Excel文件为空或格式不正确');
       }
 
-      const firstRow = jsonData[0] as Record<string, unknown>;
+      const firstRow = jsonData[0];
       const requiredFields = ['单据日期', '客户', '业务员', '物料名称', '主数量', '主含税净价', '价税合计', '出库主数量'];
       const missingFields = requiredFields.filter(field => !(field in firstRow));
 
@@ -475,10 +508,9 @@ export default function AdminPage() {
       // Excel 日期序列号转换为日期字符串
       const excelDateToString = (value: unknown): string => {
         if (!value) return '';
-        
+
         // 如果已经是字符串格式的日期
         if (typeof value === 'string') {
-          // 检查是否是有效的日期格式
           const date = new Date(value);
           if (!isNaN(date.getTime())) {
             // 将日期转换为本地时间的 YYYY-MM-DD 格式
@@ -487,33 +519,50 @@ export default function AdminPage() {
           }
           return value;
         }
-        
+
         // 如果是数字，视为 Excel 日期序列号
         if (typeof value === 'number') {
-          // Excel 日期序列号：序列号 1 = 1900-01-01
-          // 从 Excel 序列号转换为 JavaScript 日期（本地时间）
-          const excelEpoch = new Date(1899, 11, 30); // 1899-12-30 是 Excel 日期 0
+          const excelEpoch = new Date(1899, 11, 30);
           const date = new Date(excelEpoch.getTime() + value * 86400000);
-          // 转换为本地时间的 YYYY-MM-DD 格式
           const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
           return localDate.toISOString().split('T')[0];
         }
-        
+
         return String(value);
       };
 
-      const salesDataArr: SalesData[] = jsonData.map((row: Record<string, unknown>) => ({
-        单据日期: excelDateToString(row['单据日期']),
-        客户: String(row['客户'] || ''),
-        业务员: String(row['业务员'] || ''),
-        物料名称: String(row['物料名称'] || ''),
-        销售计划数量: safeParseNumber(row['主数量']),
-        含税净价: safeParseNumber(row['主含税净价']),
-        价税合计: safeParseNumber(row['价税合计']),
-        出库数量: safeParseNumber(row['出库主数量']),
-      }));
+      // ========== 步骤3 & 4: 数据标准化和过滤 ==========
+      const salesDataArr: SalesData[] = jsonData
+        .map(row => {
+          // 3.1 数据标准化 - 物料名称
+          let 物料名称 = row['物料名称'] || '';
+          if (物料名称.includes('32%工业级烧碱') || 物料名称.includes('食品级烧碱')) {
+            物料名称 = '32%烧碱';
+          }
 
-      // 保存到数据库
+          // 3.2 数据标准化 - 数值（去除逗号）
+          const 销售计划数量 = parseFloat(String(row['主数量'] || '0').replace(/,/g, '')) || 0;
+          const 含税净价 = parseFloat(String(row['主含税净价'] || '0').replace(/,/g, '')) || 0;
+          const 价税合计 = parseFloat(String(row['价税合计'] || '0').replace(/,/g, '')) || 0;
+          const 出库数量 = parseFloat(String(row['出库主数量'] || '0').replace(/,/g, '')) || 0;
+
+          return {
+            单据日期: excelDateToString(row['单据日期']),
+            客户: row['客户'] || '',
+            业务员: row['业务员'] || '',
+            物料名称: 物料名称,
+            销售计划数量: 销售计划数量,
+            含税净价: 含税净价,
+            价税合计: 价税合计,
+            出库数量: 出库数量
+          };
+        })
+        // 4. 过滤无效数据：必须包含日期和物料名称
+        .filter(item => item.单据日期 && item.物料名称);
+
+      console.log('标准化后的有效数据行数:', salesDataArr.length);
+
+      // ========== 步骤5: 保存到数据库 ==========
       const response = await fetch('/api/sales-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -526,12 +575,11 @@ export default function AdminPage() {
         throw new Error(result.error || '保存失败');
       }
 
-      // 重新加载数据
+      // ========== 步骤6: 重新加载数据 ==========
       await loadSalesData();
 
       const insertedCount = result.data?.insertedCount || 0;
-      const failedCount = result.data?.failedCount || 0;
-      toast.success(`数据已保存！共 ${insertedCount} 条记录导入成功${failedCount > 0 ? `，${failedCount} 条失败` : ''}`);
+      toast.success(`数据已保存！共 ${insertedCount} 条记录导入成功`);
     } catch (error) {
       console.error('解析Excel失败:', error);
       toast.error(error instanceof Error ? error.message : '解析Excel文件失败');
@@ -1093,21 +1141,21 @@ function CostAnalysisView({
       // itemDate可能是 "2026-04-08" 格式
       return itemDate >= fromDateStr && itemDate <= toDateStr;
     });
-  }, [rawData, dateRange, selectedMaterial]);
+  }, [rawData, dateRange]);
 
-  // 根据选择的物料再次过滤
+  // 根据选择的物料再次过滤（使用标准化后的名称匹配）
   const finalFilteredData = useMemo(() => {
     if (!selectedMaterial) return filteredData;
-    return filteredData.filter(item => item.物料名称 === selectedMaterial);
+    return filteredData.filter(item => normalizeMaterialName(item.物料名称) === selectedMaterial);
   }, [filteredData, selectedMaterial]);
 
   // 计算表格数据（按客户聚合）
   const tableData = useMemo(() => {
     if (!selectedMaterial || filteredData.length === 0) return [];
 
-    // 1. 过滤选定物料
+    // 1. 过滤选定物料（使用标准化后的名称匹配）
     const materialData = filteredData.filter(item => 
-      item.物料名称 === selectedMaterial
+      normalizeMaterialName(item.物料名称) === selectedMaterial
     );
     
     // 2. 按客户聚合
