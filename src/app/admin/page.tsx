@@ -181,8 +181,9 @@ export default function AdminPage() {
   
   // 加载成本列表数据
   // 规则：
-  // 1. 如果结束日期是今天，数据计算从开始日期到当天的前一天
-  // 2. 如果结束日期不是今天，根据日期区间的数据进行计算
+  // 1. 查询日期范围内已填报的数据，包括当天
+  // 2. 如果当天数据未填报，显示"-"
+  // 3. 如果填报了一部分，显示一部分
   const loadCostListData = async () => {
     if (!dateRange.from || !dateRange.to) {
       return;
@@ -197,36 +198,9 @@ export default function AdminPage() {
     const queryToDate = new Date(dateRange.to);
     queryToDate.setHours(0, 0, 0, 0);
     
-    // 如果结束日期包含今天，查询范围改为开始日期到昨天
-    let queryFromDate: Date;
-    let queryEndDate: Date;
-    
-    if (queryToDate.getTime() >= today.getTime()) {
-      // 结束日期包含今天，使用开始日期到昨天的范围
-      queryFromDate = new Date(dateRange.from);
-      queryEndDate = new Date(today);
-      queryEndDate.setDate(queryEndDate.getDate() - 1);
-    } else {
-      // 结束日期不包含今天，使用原始日期范围
-      queryFromDate = new Date(dateRange.from);
-      queryEndDate = new Date(dateRange.to);
-    }
-    
-    // 如果查询结束日期早于开始日期，直接返回空数据
-    if (queryEndDate < queryFromDate) {
-      setCostListData({
-        materials: { quantities: {}, costs: {}, prices: {} },
-        laborAndMaintenance: {},
-        periodExpenses: {},
-
-        workshops: [],
-        totalYield: 0,
-        totalCost: 0,
-        cost32Percent: 0,
-      });
-      setIsLoading(false);
-      return;
-    }
+    // 查询范围：开始日期到结束日期（包含当天）
+    const queryFromDate: Date = new Date(dateRange.from);
+    const queryEndDate: Date = new Date(dateRange.to);
     
     const fromDateStr = format(queryFromDate, 'yyyy-MM-dd');
     const toDateStr = format(queryEndDate, 'yyyy-MM-dd');
@@ -288,10 +262,10 @@ export default function AdminPage() {
     // 成本数据的日期区间是销售日期区间的前一天
     // 单日：from=4.8, to=4.8 → queryFrom=4.7, queryTo=4.7
     // 区间：from=4.3, to=4.5 → queryFrom=4.2, queryTo=4.4
-    let queryFromDate = new Date(dateRange.from);
+    const queryFromDate = new Date(dateRange.from);
     queryFromDate.setDate(queryFromDate.getDate() - 1);
     
-    let queryEndDate = new Date(dateRange.to);
+    const queryEndDate = new Date(dateRange.to);
     queryEndDate.setDate(queryEndDate.getDate() - 1);
     
     // 如果查询结束日期早于开始日期，直接返回空数据
@@ -888,7 +862,9 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                     <span className="text-xl font-bold text-sky-700 dark:text-sky-400">
-                      ¥{calculateSubtotal(costListData.materials.costs).toFixed(2)}
+                      {calculateSubtotal(costListData.materials.costs) > 0 
+                        ? `¥${calculateSubtotal(costListData.materials.costs).toFixed(2)}` 
+                        : '-'}
                     </span>
                   </div>
                 </div>
@@ -934,7 +910,9 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                     <span className="text-xl font-bold text-amber-700 dark:text-amber-400">
-                      ¥{calculateSubtotal(costListData.laborAndMaintenance).toFixed(2)}
+                      {calculateSubtotal(costListData.laborAndMaintenance) > 0 
+                        ? `¥${calculateSubtotal(costListData.laborAndMaintenance).toFixed(2)}` 
+                        : '-'}
                     </span>
                   </div>
                 </div>
@@ -980,7 +958,9 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
                     <span className="text-xl font-bold text-violet-700 dark:text-violet-400">
-                      ¥{calculateSubtotal(costListData.periodExpenses).toFixed(2)}
+                      {calculateSubtotal(costListData.periodExpenses) > 0 
+                        ? `¥${calculateSubtotal(costListData.periodExpenses).toFixed(2)}` 
+                        : '-'}
                     </span>
                   </div>
                 </div>
@@ -997,27 +977,36 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
                     <span className="text-xl text-slate-600 dark:text-slate-400">直接材料</span>
                     <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-                      ¥{calculateSubtotal(costListData.materials.costs).toFixed(2)}
+                      {calculateSubtotal(costListData.materials.costs) > 0 
+                        ? `¥${calculateSubtotal(costListData.materials.costs).toFixed(2)}` 
+                        : '-'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
                     <span className="text-xl text-slate-600 dark:text-slate-400">制造费用</span>
                     <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-                      ¥{calculateSubtotal(costListData.laborAndMaintenance).toFixed(2)}
+                      {calculateSubtotal(costListData.laborAndMaintenance) > 0 
+                        ? `¥${calculateSubtotal(costListData.laborAndMaintenance).toFixed(2)}` 
+                        : '-'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
                     <span className="text-xl text-slate-600 dark:text-slate-400">其他费用</span>
                     <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-                      ¥{calculateSubtotal(costListData.periodExpenses).toFixed(2)}
+                      {calculateSubtotal(costListData.periodExpenses) > 0 
+                        ? `¥${calculateSubtotal(costListData.periodExpenses).toFixed(2)}` 
+                        : '-'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-4 px-6 bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-700 dark:to-emerald-800 text-white rounded-xl mt-6 shadow-md">
                     <span className="text-2xl font-bold">总成本合计</span>
                     <span className="text-4xl font-bold">
-                      ¥{(calculateSubtotal(costListData.materials.costs) +
-                          calculateSubtotal(costListData.laborAndMaintenance) +
-                          calculateSubtotal(costListData.periodExpenses)).toFixed(2)}
+                      {(() => {
+                        const total = calculateSubtotal(costListData.materials.costs) +
+                            calculateSubtotal(costListData.laborAndMaintenance) +
+                            calculateSubtotal(costListData.periodExpenses);
+                        return total > 0 ? `¥${total.toFixed(2)}` : '-';
+                      })()}
                     </span>
                   </div>
                 </div>
