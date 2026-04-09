@@ -69,6 +69,7 @@ const safeParseNumber = (value: unknown): number => {
 // 销售数据接口
 interface SalesData {
   单据日期: string;
+  单据编号: string;
   客户: string;
   业务员: string;
   物料名称: string;
@@ -546,8 +547,12 @@ export default function AdminPage() {
           const 价税合计 = parseFloat(String(row['价税合计'] || '0').replace(/,/g, '')) || 0;
           const 出库数量 = parseFloat(String(row['出库主数量'] || '0').replace(/,/g, '')) || 0;
 
+          // 3.3 单据编号（优先读取"单据编号"，其次"单据号"）
+          const 单据编号 = row['单据编号'] || row['单据号'] || '';
+
           return {
             单据日期: excelDateToString(row['单据日期']),
+            单据编号: 单据编号,
             客户: row['客户'] || '',
             业务员: row['业务员'] || '',
             物料名称: 物料名称,

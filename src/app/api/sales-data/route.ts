@@ -50,6 +50,7 @@ const safeParseNumber = (value: unknown): number => {
 // Excel数据类型定义
 interface ExcelSalesData {
   单据日期: string;
+  单据编号: string;
   客户: string;
   业务员: string;
   物料名称: string;
@@ -112,6 +113,7 @@ export async function GET(request: NextRequest) {
       // 转换数据格式
       const formattedData = (allData as Array<Record<string, unknown>>).map((item) => ({
         单据日期: item.document_date,
+        单据编号: item.document_no || '',
         客户: item.customer,
         业务员: item.salesman,
         物料名称: item.material_name,
@@ -158,6 +160,7 @@ export async function GET(request: NextRequest) {
     // 转换数据格式以匹配前端期望
     const formattedData = (data || []).map((item) => ({
       单据日期: item.document_date,
+      单据编号: item.document_no || '',
       客户: item.customer,
       业务员: item.salesman,
       物料名称: item.material_name,
@@ -219,6 +222,7 @@ export async function POST(request: NextRequest) {
     // 转换数据格式
     const records = salesData.map((item: ExcelSalesData) => ({
       document_date: item.单据日期,
+      document_no: item.单据编号 || null,
       customer: item.客户,
       salesman: item.业务员,
       material_name: item.物料名称,
