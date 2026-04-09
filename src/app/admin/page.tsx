@@ -847,14 +847,14 @@ export default function AdminPage() {
           <>
             {view === 'list' && (
               <>
-            {/* 原材料类成本汇总 */}
+            {/* 直接材料汇总 */}
             <Card className="shadow-sm border-slate-200 dark:border-slate-800">
               <CardHeader className="bg-sky-50 dark:bg-sky-950/30 border-b border-sky-100 dark:border-sky-900/30 py-4">
                 <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
                   <div className="p-1.5 bg-sky-100 dark:bg-sky-900/50 rounded-lg">
                     <TrendingUp className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                   </div>
-                  原材料类成本汇总
+                  直接材料
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
@@ -901,13 +901,14 @@ export default function AdminPage() {
               </CardContent>
             </Card>
 
-            {/* 人工与维护类成本汇总 */}
+            {/* 制造费用汇总 */}
             <Card className="shadow-sm border-slate-200 dark:border-slate-800">
               <CardHeader className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/30 py-4">
                 <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
                   <div className="p-1.5 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
                     <TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   </div>
+                  制造费用
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
@@ -943,13 +944,14 @@ export default function AdminPage() {
               </CardContent>
             </Card>
 
-            {/* 期间费用与税费汇总 */}
+            {/* 其他费用汇总 */}
             <Card className="shadow-sm border-slate-200 dark:border-slate-800">
               <CardHeader className="bg-violet-50 dark:bg-violet-950/30 border-b border-violet-100 dark:border-violet-900/30 py-4">
                 <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
                   <div className="p-1.5 bg-violet-100 dark:bg-violet-900/50 rounded-lg">
                     <TrendingUp className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                   </div>
+                  其他费用
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
@@ -985,48 +987,6 @@ export default function AdminPage() {
               </CardContent>
             </Card>
 
-            {/* 调整项汇总 */}
-            <Card className="shadow-sm border-slate-200 dark:border-slate-800">
-              <CardHeader className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 py-4">
-                <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                  <div className="p-1.5 bg-slate-100 dark:bg-slate-900/50 rounded-lg">
-                    <TrendingUp className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {/* 表头 */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
-                  <div className="md:col-span-7 text-xl font-semibold text-slate-700 dark:text-slate-300">成本项目</div>
-                  <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">数量</div>
-                  <div className="md:col-span-3 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
-                </div>
-                <div className="space-y-3">
-                  {ADJUSTMENT_ITEMS.map((item) => (
-                    <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
-                      <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
-                        {item.name}
-                      </div>
-                      <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right">
-                        {(costListData.adjustments[item.name] || 0).toFixed(2)}
-                      </div>
-                      <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
-                        {item.unit}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-900/20 rounded-lg border border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
-                    <span className="text-xl font-bold text-red-600 dark:text-red-400">
-                      ¥{calculateSubtotal(costListData.adjustments).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* 总成本汇总 */}
             <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-gradient-to-br from-blue-50 via-white to-violet-50 dark:from-blue-950/30 dark:via-slate-900 dark:to-violet-950/30">
               <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
@@ -1035,27 +995,21 @@ export default function AdminPage() {
               <CardContent className="pt-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <span className="text-xl text-slate-600 dark:text-slate-400">原材料成本</span>
+                    <span className="text-xl text-slate-600 dark:text-slate-400">直接材料</span>
                     <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
                       ¥{calculateSubtotal(costListData.materials.costs).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <span className="text-xl text-slate-600 dark:text-slate-400">人工与维护成本</span>
+                    <span className="text-xl text-slate-600 dark:text-slate-400">制造费用</span>
                     <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
                       ¥{calculateSubtotal(costListData.laborAndMaintenance).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <span className="text-xl text-slate-600 dark:text-slate-400">期间费用</span>
+                    <span className="text-xl text-slate-600 dark:text-slate-400">其他费用</span>
                     <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
                       ¥{calculateSubtotal(costListData.periodExpenses).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <span className="text-xl text-slate-600 dark:text-slate-400">调减其他收入</span>
-                    <span className="text-3xl font-bold text-red-600 dark:text-red-400">
-                      -¥{calculateSubtotal(costListData.adjustments).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-4 px-6 bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-700 dark:to-emerald-800 text-white rounded-xl mt-6 shadow-md">
@@ -1063,8 +1017,7 @@ export default function AdminPage() {
                     <span className="text-4xl font-bold">
                       ¥{(calculateSubtotal(costListData.materials.costs) +
                           calculateSubtotal(costListData.laborAndMaintenance) +
-                          calculateSubtotal(costListData.periodExpenses) -
-                          calculateSubtotal(costListData.adjustments)).toFixed(2)}
+                          calculateSubtotal(costListData.periodExpenses)).toFixed(2)}
                     </span>
                   </div>
                 </div>

@@ -732,6 +732,183 @@ export default function ManagementPage() {
           </CardContent>
         </Card>
 
+        {/* 直接材料汇总 */}
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800">
+          <CardHeader className="bg-sky-50 dark:bg-sky-950/30 border-b border-sky-100 dark:border-sky-900/30 py-4">
+            <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
+              <div className="p-1.5 bg-sky-100 dark:bg-sky-900/50 rounded-lg">
+                <DollarSign className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+              </div>
+              直接材料
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {/* 表头 */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
+              <div className="md:col-span-4 text-xl font-semibold text-slate-700 dark:text-slate-300">成本项目</div>
+              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">数量</div>
+              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">单价</div>
+              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">单位</div>
+              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">成本（元）</div>
+            </div>
+            <div className="space-y-3">
+              {MATERIAL_ITEMS.map((item) => {
+                const quantity = parseFloat(costData.workshopData.materials[item.name]) || 0;
+                const price = purchasePrices[item.name] || 0;
+                const cost = quantity * price;
+
+                return (
+                  <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
+                    <div className="md:col-span-4 text-xl font-medium text-slate-600 dark:text-slate-400">
+                      {item.name}
+                    </div>
+                    <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right">
+                      {quantity > 0 ? quantity.toFixed(2) : '-'}
+                    </div>
+                    <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right">
+                      {price > 0 ? price : '-'}
+                    </div>
+                    <div className="md:col-span-2 text-xl text-slate-500 dark:text-slate-500 text-right">
+                      {item.unit}
+                    </div>
+                    <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right font-semibold">
+                      {cost > 0 ? `¥${cost.toFixed(2)}` : '-'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-6 p-4 bg-sky-50 dark:bg-sky-950/20 rounded-lg border border-sky-100 dark:border-sky-900/30">
+              <div className="flex items-center justify-between">
+                <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
+                <span className="text-xl font-bold text-sky-700 dark:text-sky-400">
+                  ¥{calculateDirectMaterialCost(costData.workshopData.materials).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 制造费用汇总 */}
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800">
+          <CardHeader className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/30 py-4">
+            <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
+              <div className="p-1.5 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
+                <Calculator className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              制造费用
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {/* 表头 */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
+              <div className="md:col-span-7 text-xl font-semibold text-slate-700 dark:text-slate-300">成本项目</div>
+              <div className="md:col-span-3 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">金额（元）</div>
+              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
+            </div>
+            <div className="space-y-3">
+              {/* 工资及福利（汇总两个车间） */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
+                <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
+                  工资及福利（碱车间）
+                </div>
+                <div className="md:col-span-3 text-xl text-slate-700 dark:text-slate-300 text-right">
+                  {parseFloat(costData.workshopData.workshopLabor['碱车间']?.['工资及福利'] || '') || 0 > 0 
+                    ? (parseFloat(costData.workshopData.workshopLabor['碱车间']?.['工资及福利'] || '') || 0).toFixed(2)
+                    : '-'}
+                </div>
+                <div className="md:col-span-2 text-xl text-slate-500 dark:text-slate-500 text-center">
+                  元
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
+                <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
+                  工资及福利（氯车间）
+                </div>
+                <div className="md:col-span-3 text-xl text-slate-700 dark:text-slate-300 text-right">
+                  {parseFloat(costData.workshopData.workshopLabor['氯车间']?.['工资及福利'] || '') || 0 > 0 
+                    ? (parseFloat(costData.workshopData.workshopLabor['氯车间']?.['工资及福利'] || '') || 0).toFixed(2)
+                    : '-'}
+                </div>
+                <div className="md:col-span-2 text-xl text-slate-500 dark:text-slate-500 text-center">
+                  元
+                </div>
+              </div>
+              {/* 其他制造费用 */}
+              {LABOR_MAINTENANCE_ITEMS.filter(item => item.name !== '工资及福利').map((item) => {
+                const amount = parseFloat(costData.workshopData.laborAndMaintenance[item.name]) || 0;
+                return (
+                  <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
+                    <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
+                      {item.name}
+                    </div>
+                    <div className="md:col-span-3 text-xl text-slate-700 dark:text-slate-300 text-right">
+                      {amount > 0 ? amount.toFixed(2) : '-'}
+                    </div>
+                    <div className="md:col-span-2 text-xl text-slate-500 dark:text-slate-500 text-center">
+                      {item.unit}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-100 dark:border-amber-900/30">
+              <div className="flex items-center justify-between">
+                <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
+                <span className="text-xl font-bold text-amber-700 dark:text-amber-400">
+                  ¥{calculateManufacturingCost(costData.workshopData.laborAndMaintenance, costData.workshopData.workshopLabor).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 其他费用汇总 */}
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800">
+          <CardHeader className="bg-violet-50 dark:bg-violet-950/30 border-b border-violet-100 dark:border-violet-900/30 py-4">
+            <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
+              <div className="p-1.5 bg-violet-100 dark:bg-violet-900/50 rounded-lg">
+                <DollarSign className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+              </div>
+              其他费用
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {/* 表头 */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
+              <div className="md:col-span-7 text-xl font-semibold text-slate-700 dark:text-slate-300">成本项目</div>
+              <div className="md:col-span-3 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">金额（元）</div>
+              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
+            </div>
+            <div className="space-y-3">
+              {PERIOD_EXPENSE_ITEMS.map((item) => {
+                const amount = parseFloat(costData.managementData.periodExpenses[item.name]) || 0;
+                return (
+                  <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
+                    <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
+                      {item.name}
+                    </div>
+                    <div className="md:col-span-3 text-xl text-slate-700 dark:text-slate-300 text-right">
+                      {amount > 0 ? amount.toFixed(2) : '-'}
+                    </div>
+                    <div className="md:col-span-2 text-xl text-slate-500 dark:text-slate-500 text-center">
+                      {item.unit}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-6 p-4 bg-violet-50 dark:bg-violet-950/20 rounded-lg border border-violet-100 dark:border-violet-900/30">
+              <div className="flex items-center justify-between">
+                <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
+                <span className="text-xl font-bold text-violet-700 dark:text-violet-400">
+                  ¥{calculateSubtotal(costData.managementData.periodExpenses).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* 总成本汇总 */}
         <Card className="shadow-lg border-slate-200 dark:border-slate-800 bg-gradient-to-br from-blue-50 via-white to-violet-50 dark:from-blue-950/30 dark:via-slate-900 dark:to-violet-950/30">
           <CardHeader className="border-b border-slate-200 dark:border-slate-700 py-4">
