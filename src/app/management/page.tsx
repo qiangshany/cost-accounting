@@ -345,21 +345,18 @@ export default function ManagementPage() {
     return Object.values(obj).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
   };
 
-  // 计算生产成本小计（数量 × 单价 + 金额类项目 + 工资及福利）
-  const calculateWorkshopProductionCost = (materials: Record<string, string>, labor: Record<string, string>, workshopLabor: Record<string, Record<string, string>>) => {
-    // 计算原材料成本：数量 × 单价（针对单位为物理量的项目）+ 金额（针对单位为"元"的项目）
-    const materialCost = MATERIAL_ITEMS.reduce((sum, item) => {
+  // 计算直接材料成本小计（原材料 × 单价）
+  const calculateDirectMaterialCost = (materials: Record<string, string>) => {
+    return MATERIAL_ITEMS.reduce((sum, item) => {
       const quantity = parseFloat(materials[item.name]) || 0;
-      if (item.unit === '元') {
-        // 单位为"元"的项目，直接作为金额
-        return sum + quantity;
-      } else {
-        // 单位为物理量的项目，需要乘以单价
-        const price = purchasePrices[item.name] || 0;
-        return sum + (quantity * price);
-      }
+      // 原材料都需要乘以单价
+      const price = purchasePrices[item.name] || 0;
+      return sum + (quantity * price);
     }, 0);
+  };
 
+  // 计算制造费用小计（人工与维护成本 + 工资及福利）
+  const calculateManufacturingCost = (labor: Record<string, string>, workshopLabor: Record<string, Record<string, string>>) => {
     // 计算人工与维护成本：非"工资及福利"的项目
     const laborCostItems = LABOR_MAINTENANCE_ITEMS.filter(item => item.name !== '工资及福利');
     const laborCost = laborCostItems.reduce((sum, item) => {
@@ -371,7 +368,12 @@ export default function ManagementPage() {
       return sum + (parseFloat(workshop['工资及福利']) || 0);
     }, 0);
 
-    return materialCost + laborCost + totalSalaryAndBenefits;
+    return laborCost + totalSalaryAndBenefits;
+  };
+
+  // 计算生产成本小计（直接材料 + 制造费用）
+  const calculateWorkshopProductionCost = (materials: Record<string, string>, labor: Record<string, string>, workshopLabor: Record<string, Record<string, string>>) => {
+    return calculateDirectMaterialCost(materials) + calculateManufacturingCost(labor, workshopLabor);
   };
 
   const handleLogout = () => {
@@ -737,30 +739,33 @@ export default function ManagementPage() {
           </CardHeader>
           <CardContent className="pt-6">
             <div className="space-y-4">
+              {/* 直接材料成本小计 */}
               <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                <span className="text-xl text-slate-600 dark:text-slate-400">小计</span>
+                <span className="text-xl text-slate-600 dark:text-slate-400">直接材料成本小计</span>
                 <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-                  ¥{calculateWorkshopProductionCost(costData.workshopData.materials, costData.workshopData.laborAndMaintenance, costData.workshopData.workshopLabor).toFixed(2)}
+                  ¥{calculateDirectMaterialCost(costData.workshopData.materials).toFixed(2)}
                 </span>
               </div>
+              {/* 制造费用小计 */}
               <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                <span className="text-xl text-slate-600 dark:text-slate-400">期间费用小计</span>
+                <span className="text-xl text-slate-600 dark:text-slate-400">制造费用小计</span>
+                <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
+                  ¥{calculateManufacturingCost(costData.workshopData.laborAndMaintenance, costData.workshopData.workshopLabor).toFixed(2)}
+                </span>
+              </div>
+              {/* 其他费用小计 */}
+              <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
+                <span className="text-xl text-slate-600 dark:text-slate-400">其他费用小计</span>
                 <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
                   ¥{calculateSubtotal(costData.managementData.periodExpenses).toFixed(2)}
                 </span>
               </div>
-              <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                <span className="text-xl text-slate-600 dark:text-slate-400">调减其他收入</span>
-                <span className="text-3xl font-bold text-red-600 dark:text-red-400">
-                  ¥{calculateSubtotal(costData.managementData.adjustments).toFixed(2)}
-                </span>
-              </div>
+              {/* 总成本合计 */}
               <div className="flex items-center justify-between py-4 px-6 bg-gradient-to-r from-violet-600 to-violet-700 dark:from-violet-700 dark:to-violet-800 text-white rounded-xl mt-6 shadow-md">
                 <span className="text-2xl font-bold">总成本合计</span>
                 <span className="text-4xl font-bold">
                   ¥{(calculateWorkshopProductionCost(costData.workshopData.materials, costData.workshopData.laborAndMaintenance, costData.workshopData.workshopLabor) +
-                      calculateSubtotal(costData.managementData.periodExpenses) -
-                      calculateSubtotal(costData.managementData.adjustments)).toFixed(2)}
+                      calculateSubtotal(costData.managementData.periodExpenses)).toFixed(2)}
                 </span>
               </div>
             </div>
