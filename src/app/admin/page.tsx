@@ -421,16 +421,17 @@ export default function AdminPage() {
       }
 
       // Excel 日期序列号转换为日期字符串
-      // Excel 日期从 1900-01-01 开始（序列号 1 = 1900-01-01）
       const excelDateToString = (value: unknown): string => {
         if (!value) return '';
         
-        // 如果已经是字符串格式的日期，直接返回
+        // 如果已经是字符串格式的日期
         if (typeof value === 'string') {
           // 检查是否是有效的日期格式
           const date = new Date(value);
           if (!isNaN(date.getTime())) {
-            return value.split('T')[0]; // 返回 YYYY-MM-DD 格式
+            // 将日期转换为本地时间的 YYYY-MM-DD 格式
+            const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+            return localDate.toISOString().split('T')[0];
           }
           return value;
         }
@@ -438,15 +439,12 @@ export default function AdminPage() {
         // 如果是数字，视为 Excel 日期序列号
         if (typeof value === 'number') {
           // Excel 日期序列号：序列号 1 = 1900-01-01
-          // 但 Excel 有一个 bug，把 1900 年当作闰年，所以需要减 1
-          // JavaScript Date 从 1970-01-01 开始，所以转换逻辑不同
-          // 直接用 XLSX 库的公式：Excel 日期 = (JavaScript 日期 - 25569) * 86400 * 1000
-          // 或者更简单的：Excel 日期序列号 46119 = 2026-04-08
-          // 从 1900-01-01 (序列号 1) 到 1970-01-01 (序列号 25569) 是 25568 天
-          // 从 Excel 序列号转换为 JavaScript 日期
+          // 从 Excel 序列号转换为 JavaScript 日期（本地时间）
           const excelEpoch = new Date(1899, 11, 30); // 1899-12-30 是 Excel 日期 0
           const date = new Date(excelEpoch.getTime() + value * 86400000);
-          return date.toISOString().split('T')[0];
+          // 转换为本地时间的 YYYY-MM-DD 格式
+          const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+          return localDate.toISOString().split('T')[0];
         }
         
         return String(value);
