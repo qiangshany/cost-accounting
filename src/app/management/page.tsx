@@ -146,58 +146,58 @@ export default function ManagementPage() {
           periodResponse.json(),
         ]);
 
+        // 初始化空数据
+        const initDirectMaterials: Record<string, string> = {};
+        DIRECT_MATERIAL_ITEMS.forEach(item => initDirectMaterials[item.name] = '');
+        const initManufacturingCosts: Record<string, string> = {};
+        MANUFACTURING_COST_ITEMS.forEach(item => initManufacturingCosts[item.name] = '');
+        const initOtherCosts: Record<string, string> = {};
+        OTHER_COST_ITEMS.forEach(item => initOtherCosts[item.name] = '');
+        const initPrices: Record<string, number> = {};
+
         // 加载直接材料数量（来自碱车间填报）
-        if (materialData.success && materialData.data) {
-          const materialMap: Record<string, string> = {};
+        if (materialData.success && materialData.data && materialData.data.length > 0) {
           materialData.data.forEach((item: MaterialCostData) => {
             // 匹配 DIRECT_MATERIAL_ITEMS 中的项目
             const matchedItem = DIRECT_MATERIAL_ITEMS.find(dm => dm.name === item.material_name);
             if (matchedItem) {
-              materialMap[item.material_name] = item.quantity === null ? '' : String(item.quantity);
+              initDirectMaterials[item.material_name] = item.quantity === null ? '' : String(item.quantity);
             }
           });
-          setCostData(prev => ({
-            ...prev,
-            directMaterials: { ...prev.directMaterials, ...materialMap },
-          }));
         }
 
         // 加载制造费用
-        if (laborData.success && laborData.data) {
-          const manufacturingMap: Record<string, string> = {};
+        if (laborData.success && laborData.data && laborData.data.length > 0) {
           laborData.data.forEach((item: LaborCostData) => {
             // 匹配 MANUFACTURING_COST_ITEMS 中的项目
             const matchedItem = MANUFACTURING_COST_ITEMS.find(mc => mc.name === item.cost_item_name);
             if (matchedItem) {
-              manufacturingMap[item.cost_item_name] = item.amount === null ? '' : String(item.amount);
+              initManufacturingCosts[item.cost_item_name] = item.amount === null ? '' : String(item.amount);
             }
           });
-          setCostData(prev => ({
-            ...prev,
-            manufacturingCosts: { ...prev.manufacturingCosts, ...manufacturingMap },
-          }));
         }
 
         // 加载采购部单价
-        if (priceData.success && priceData.data) {
-          const priceMap: Record<string, number> = {};
+        if (priceData.success && priceData.data && priceData.data.length > 0) {
           priceData.data.forEach((item: PurchasePriceData) => {
-            priceMap[item.material_name] = item.price || 0;
+            initPrices[item.material_name] = item.price || 0;
           });
-          setPurchasePrices(priceMap);
         }
 
         // 加载其他费用（期间费用）
-        if (periodData.success && periodData.data) {
-          const otherCostMap: Record<string, string> = {};
+        if (periodData.success && periodData.data && periodData.data.length > 0) {
           periodData.data.forEach((item: PeriodExpenseData) => {
-            otherCostMap[item.expense_item_name] = item.amount === null ? '' : String(item.amount);
+            initOtherCosts[item.expense_item_name] = item.amount === null ? '' : String(item.amount);
           });
-          setCostData(prev => ({
-            ...prev,
-            otherCosts: { ...prev.otherCosts, ...otherCostMap },
-          }));
         }
+
+        // 更新状态
+        setCostData({
+          directMaterials: initDirectMaterials,
+          manufacturingCosts: initManufacturingCosts,
+          otherCosts: initOtherCosts,
+        });
+        setPurchasePrices(initPrices);
       } catch (error) {
         console.error('加载数据失败:', error);
       }

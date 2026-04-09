@@ -163,42 +163,41 @@ export default function WorkshopPage() {
           if (yieldRecord.hydrochloric_acid_yield !== undefined) {
             setYields(prev => ({ ...prev, hydrochloricAcidYield: yieldRecord.hydrochloric_acid_yield === null ? '' : String(yieldRecord.hydrochloric_acid_yield) }));
           }
+        } else {
+          // 新日期没有数据，重置产量为空
+          setYields({ alkaliYield: '', chlorineYield: '', hydrochloricAcidYield: '' });
         }
 
+        // 初始化空数据
+        const initMaterials: Record<string, string> = {};
+        MATERIAL_ITEMS.forEach(item => initMaterials[item.name] = '');
+        const initLabor: Record<string, string> = {};
+        LABOR_MAINTENANCE_ITEMS.forEach(item => initLabor[item.name] = '');
+
         // 加载原材料成本数据
-        if (materialData.success && materialData.data) {
-          const materialMap: Record<string, string> = {};
+        if (materialData.success && materialData.data && materialData.data.length > 0) {
           materialData.data.forEach((item: MaterialCostData) => {
-            materialMap[item.material_name] = item.quantity ? String(item.quantity) : '';
+            initMaterials[item.material_name] = item.quantity ? String(item.quantity) : '';
           });
-          setCostData(prev => ({
-            ...prev,
-            materials: { ...prev.materials, ...materialMap },
-          }));
         }
 
         // 加载人工与维护成本数据
-        if (laborData.success && laborData.data) {
-          const laborMap: Record<string, string> = {};
-
+        if (laborData.success && laborData.data && laborData.data.length > 0) {
           laborData.data.forEach((item: LaborCostData) => {
-            // 优先使用 cost_item_name 直接匹配
-            if (item.cost_item_name in laborMap || laborMap[item.cost_item_name] !== undefined) {
-              // 如果已存在，跳过（因为已有初始化值）
-            }
-            laborMap[item.cost_item_name] = item.amount === null ? '' : String(item.amount);
+            initLabor[item.cost_item_name] = item.amount === null ? '' : String(item.amount);
             
             // 如果是"工资及福利"，同时映射到"工人工资及保险"
             if (item.cost_item_name === SALARY_SOURCE_KEY) {
-              laborMap['工人工资及保险'] = item.amount === null ? '' : String(item.amount);
+              initLabor['工人工资及保险'] = item.amount === null ? '' : String(item.amount);
             }
           });
-
-          setCostData(prev => ({
-            ...prev,
-            laborAndMaintenance: { ...prev.laborAndMaintenance, ...laborMap },
-          }));
         }
+
+        // 更新成本数据状态
+        setCostData({
+          materials: initMaterials,
+          laborAndMaintenance: initLabor,
+        });
 
         // 加载采购部单价数据
         if (priceData.success && priceData.data) {

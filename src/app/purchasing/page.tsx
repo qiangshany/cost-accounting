@@ -66,6 +66,10 @@ export default function PurchasingPage() {
       if (!selectedDate) return;
 
       try {
+        // 先重置所有价格为空
+        const resetMaterials: Record<string, string> = {};
+        MATERIAL_ITEMS.forEach(item => resetMaterials[item.name] = '');
+        
         const response = await fetch(`/api/purchase-price?date=${selectedDate}`);
         const data = await response.json();
 
@@ -76,16 +80,13 @@ interface PurchasePriceItem {
 
         if (data.success && data.data && data.data.length > 0) {
           // 构建价格映射（转换为字符串存储）
-          const priceMap: Record<string, string> = {};
           data.data.forEach((item: PurchasePriceItem) => {
-            priceMap[item.material_name] = item.price === null ? '' : String(item.price);
+            resetMaterials[item.material_name] = item.price === null ? '' : String(item.price);
           });
-
-          // 更新状态
-          setPriceData(prev => ({
-            materials: { ...prev.materials, ...priceMap }
-          }));
         }
+        
+        // 更新状态（使用重置后的数据）
+        setPriceData({ materials: resetMaterials });
       } catch (error) {
         console.error('加载采购单价数据失败:', error);
       }
