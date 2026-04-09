@@ -506,27 +506,32 @@ export default function AdminPage() {
         throw new Error(`缺少必要字段: ${missingFields.join(', ')}`);
       }
 
-      // Excel 日期序列号转换为日期字符串
+      // Excel 日期序列号转换为日期字符串 (YYYY-MM-DD)
       const excelDateToString = (value: unknown): string => {
         if (!value) return '';
 
-        // 如果已经是字符串格式的日期
+        // 如果是字符串格式的日期
         if (typeof value === 'string') {
+          // 检查是否是有效的日期格式
           const date = new Date(value);
           if (!isNaN(date.getTime())) {
-            // 将日期转换为本地时间的 YYYY-MM-DD 格式
-            const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
-            return localDate.toISOString().split('T')[0];
+            // 直接提取 YYYY-MM-DD 部分
+            return date.toISOString().split('T')[0];
+          }
+          // 如果已经是 YYYY-MM-DD 格式，直接返回
+          if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+            return value;
           }
           return value;
         }
 
         // 如果是数字，视为 Excel 日期序列号
         if (typeof value === 'number') {
-          const excelEpoch = new Date(1899, 11, 30);
+          // Excel 日期序列号：序列号 1 = 1900-01-01
+          // 正确转换：1899-12-30 是 Excel 日期 0
+          const excelEpoch = new Date(Date.UTC(1899, 11, 30));
           const date = new Date(excelEpoch.getTime() + value * 86400000);
-          const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
-          return localDate.toISOString().split('T')[0];
+          return date.toISOString().split('T')[0];
         }
 
         return String(value);
