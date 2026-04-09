@@ -90,14 +90,22 @@ export default function AdminPage() {
   const [view, setView] = useState<'list' | 'analysis'>('list');
   const [isLoading, setIsLoading] = useState(false);
   
-  // 共享筛选状态 - 使用函数初始化以避免SSR/客户端时间不一致
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return { from: now, to: now };
+  // 共享筛选状态 - 使用useEffect设置以避免SSR/客户端时间不一致
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined
   });
+  const [isDateInitialized, setIsDateInitialized] = useState(false);
   const [isStartCalendarOpen, setIsStartCalendarOpen] = useState(false);
   const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false);
+  
+  // 使用useEffect设置初始日期，避免SSR时区问题
+  useEffect(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    setDateRange({ from: now, to: now });
+    setIsDateInitialized(true);
+  }, []);
   
   // 成本列表数据状态
   const [costListData, setCostListData] = useState<SummaryData>({
@@ -356,13 +364,15 @@ export default function AdminPage() {
   
   // 当日期、产品变化时，重新加载成本列表数据
   useEffect(() => {
+    if (!isDateInitialized) return;
     if (view === 'list') {
       loadCostListData();
     }
-  }, [dateRange, selectedMaterial, view]);
+  }, [dateRange, selectedMaterial, view, isDateInitialized]);
   
   // 当切换到成本分析视图时，加载销售数据和成本数据
   useEffect(() => {
+    if (!isDateInitialized) return;
     if (view === 'analysis') {
       if (salesData.length === 0) {
         loadSalesData();
@@ -370,7 +380,7 @@ export default function AdminPage() {
       // 加载成本分析的成本数据（使用前一天）
       loadAnalysisCostData();
     }
-  }, [view, dateRange, selectedMaterial]);
+  }, [view, dateRange, selectedMaterial, isDateInitialized]);
 
   // 检查登录状态和角色
   useEffect(() => {
