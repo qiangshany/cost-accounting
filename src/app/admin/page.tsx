@@ -909,23 +909,26 @@ export default function AdminPage() {
                 {/* 表头 */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
                   <div className="md:col-span-7 text-xl font-semibold text-slate-700 dark:text-slate-300">成本项目</div>
-                  <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">金额</div>
-                  <div className="md:col-span-3 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
+                  <div className="md:col-span-3 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">金额（元）</div>
+                  <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
                 </div>
                 <div className="space-y-3">
-                  {LABOR_MAINTENANCE_ITEMS.map((item) => (
-                    <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
-                      <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
-                        {item.name}
+                  {LABOR_MAINTENANCE_ITEMS.map((item) => {
+                    const amount = costListData.laborAndMaintenance[item.name] || 0;
+                    return (
+                      <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
+                        <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
+                          {item.name}
+                        </div>
+                        <div className="md:col-span-3 text-xl text-slate-700 dark:text-slate-300 text-right">
+                          {amount > 0 ? amount.toFixed(2) : '-'}
+                        </div>
+                        <div className="md:col-span-2 text-xl text-slate-500 dark:text-slate-500 text-center">
+                          {item.unit}
+                        </div>
                       </div>
-                      <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right">
-                        {(costListData.laborAndMaintenance[item.name] || 0).toFixed(2)}
-                      </div>
-                      <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
-                        {item.unit}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-100 dark:border-amber-900/30">
                   <div className="flex items-center justify-between">
@@ -952,23 +955,26 @@ export default function AdminPage() {
                 {/* 表头 */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
                   <div className="md:col-span-7 text-xl font-semibold text-slate-700 dark:text-slate-300">成本项目</div>
-                  <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">数量</div>
-                  <div className="md:col-span-3 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
+                  <div className="md:col-span-3 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">金额（元）</div>
+                  <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
                 </div>
                 <div className="space-y-3">
-                  {PERIOD_EXPENSE_ITEMS.map((item) => (
-                    <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
-                      <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
-                        {item.name}
+                  {PERIOD_EXPENSE_ITEMS.map((item) => {
+                    const amount = costListData.periodExpenses[item.name] || 0;
+                    return (
+                      <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
+                        <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
+                          {item.name}
+                        </div>
+                        <div className="md:col-span-3 text-xl text-slate-700 dark:text-slate-300 text-right">
+                          {amount > 0 ? amount.toFixed(2) : '-'}
+                        </div>
+                        <div className="md:col-span-2 text-xl text-slate-500 dark:text-slate-500 text-center">
+                          {item.unit}
+                        </div>
                       </div>
-                      <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right">
-                        {(costListData.periodExpenses[item.name] || 0).toFixed(2)}
-                      </div>
-                      <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
-                        {item.unit}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="mt-6 p-4 bg-violet-50 dark:bg-violet-950/20 rounded-lg border border-violet-100 dark:border-violet-900/30">
                   <div className="flex items-center justify-between">
