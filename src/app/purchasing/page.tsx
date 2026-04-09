@@ -229,7 +229,7 @@ interface PurchasePriceItem {
                   <Input
                     id={`material-${item.name}`}
                     type="number"
-                    step="0.000000001"
+                    step="0.01"
                     min="0"
                     placeholder="0"
                     value={priceData.materials[item.name] !== undefined && priceData.materials[item.name] !== null ? String(priceData.materials[item.name]) : ''}

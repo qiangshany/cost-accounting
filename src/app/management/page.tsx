@@ -597,7 +597,7 @@ export default function ManagementPage() {
                 </Label>
                 <Input
                   type="number"
-                  step="0.000000001"
+                  step="0.01"
                   min="0"
                   placeholder="0"
                   value={costData.workshopData.workshopLabor['碱车间']?.['工资及福利'] !== undefined && costData.workshopData.workshopLabor['碱车间']?.['工资及福利'] !== null ? String(costData.workshopData.workshopLabor['碱车间']?.['工资及福利']) : ''}
@@ -616,7 +616,7 @@ export default function ManagementPage() {
                 </Label>
                 <Input
                   type="number"
-                  step="0.000000001"
+                  step="0.01"
                   min="0"
                   placeholder="0"
                   value={costData.workshopData.workshopLabor['氯车间']?.['工资及福利'] !== undefined && costData.workshopData.workshopLabor['氯车间']?.['工资及福利'] !== null ? String(costData.workshopData.workshopLabor['氯车间']?.['工资及福利']) : ''}
@@ -657,7 +657,7 @@ export default function ManagementPage() {
                   <Input
                     id={`period-${item.name}`}
                     type="number"
-                    step="0.000000001"
+                    step="0.01"
                     min="0"
                     placeholder="0"
                     value={costData.managementData.periodExpenses[item.name] !== undefined && costData.managementData.periodExpenses[item.name] !== null ? String(costData.managementData.periodExpenses[item.name]) : ''}
@@ -707,7 +707,7 @@ export default function ManagementPage() {
                   <Input
                     id={`adjustment-${item.name}`}
                     type="number"
-                    step="0.000000001"
+                    step="0.01"
                     min="0"
                     placeholder="0"
                     value={costData.managementData.adjustments[item.name] !== undefined && costData.managementData.adjustments[item.name] !== null ? String(costData.managementData.adjustments[item.name]) : ''}

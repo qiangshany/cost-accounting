@@ -458,7 +458,7 @@ export default function WorkshopPage() {
                   <Input
                     id="alkali-yield"
                     type="number"
-                    step="0.000000001"
+                    step="0.01"
                     min="0"
                     placeholder="0"
                     value={yields.alkaliYield !== undefined && yields.alkaliYield !== null ? String(yields.alkaliYield) : ''}
@@ -473,7 +473,7 @@ export default function WorkshopPage() {
                   <Input
                     id="chlorine-yield"
                     type="number"
-                    step="0.000000001"
+                    step="0.01"
                     min="0"
                     placeholder="0"
                     value={yields.chlorineYield !== undefined && yields.chlorineYield !== null ? String(yields.chlorineYield) : ''}
@@ -488,7 +488,7 @@ export default function WorkshopPage() {
                   <Input
                     id="hydrochloric-acid-yield"
                     type="number"
-                    step="0.000000001"
+                    step="0.01"
                     min="0"
                     placeholder="0"
                     value={yields.hydrochloricAcidYield !== undefined && yields.hydrochloricAcidYield !== null ? String(yields.hydrochloricAcidYield) : ''}
@@ -527,7 +527,7 @@ export default function WorkshopPage() {
                   <Input
                     id={`material-${item.name}`}
                     type="number"
-                    step="0.000000001"
+                    step="0.01"
                     min="0"
                     placeholder="0"
                     value={costData.materials[item.name] !== undefined && costData.materials[item.name] !== null ? String(costData.materials[item.name]) : ''}
@@ -568,7 +568,7 @@ export default function WorkshopPage() {
                     <Input
                       id={`labor-${item.name}`}
                       type="number"
-                      step="0.000000001"
+                      step="0.01"
                       min="0"
                       placeholder="0"
                       value={costData.laborAndMaintenance[item.name] !== undefined && costData.laborAndMaintenance[item.name] !== null ? String(costData.laborAndMaintenance[item.name]) : ''}
@@ -579,7 +579,7 @@ export default function WorkshopPage() {
                     <Input
                       id={`labor-${item.name}`}
                       type="number"
-                      step="0.000000001"
+                      step="0.01"
                       min="0"
                       placeholder="0"
                       value={costData.laborAndMaintenance[item.name] !== undefined && costData.laborAndMaintenance[item.name] !== null ? String(costData.laborAndMaintenance[item.name]) : ''}
