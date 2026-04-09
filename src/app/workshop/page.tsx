@@ -34,7 +34,7 @@ const LABOR_MAINTENANCE_ITEMS: { name: string; unit: string }[] = [
   { name: '盐泥、铲销费用', unit: '元' },
   { name: '外协车费用', unit: '元' },
   { name: '污水处理费用', unit: '元' },
-  { name: '本月提取折旧', unit: '元' },
+  { name: '今日折旧', unit: '元' },
 ];
 
 // 工资及福利的源字段名（生产管理部填报的字段名）

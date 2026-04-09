@@ -34,7 +34,7 @@ const MANUFACTURING_COST_ITEMS: { name: string; unit: string }[] = [
   { name: '盐泥、铲销费用', unit: '元' },
   { name: '外协车费用', unit: '元' },
   { name: '污水处理费用', unit: '元' },
-  { name: '本月提取折旧', unit: '元' },
+  { name: '今日折旧', unit: '元' },
 ];
 
 // 其他费用项目及单位（期间费用）
@@ -424,9 +424,9 @@ export default function ManagementPage() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
               <div className="md:col-span-4 text-xl font-semibold text-slate-700 dark:text-slate-300">成本项目</div>
               <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">数量</div>
-              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">单价</div>
-              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">单位</div>
-              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">成本（元）</div>
+              <div className="md:col-span-1 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
+              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">单价（元）</div>
+              <div className="md:col-span-3 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">成本（元）</div>
             </div>
             <div className="space-y-3">
               {DIRECT_MATERIAL_ITEMS.map((item) => {
@@ -442,13 +442,13 @@ export default function ManagementPage() {
                     <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right">
                       {quantity > 0 ? quantity.toFixed(2) : '-'}
                     </div>
+                    <div className="md:col-span-1 text-xl text-slate-500 dark:text-slate-500 text-center">
+                      {item.unit}
+                    </div>
                     <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right">
                       {price > 0 ? price.toFixed(2) : '-'}
                     </div>
-                    <div className="md:col-span-2 text-xl text-slate-500 dark:text-slate-500 text-right">
-                      {item.unit}
-                    </div>
-                    <div className="md:col-span-2 text-xl text-slate-700 dark:text-slate-300 text-right font-semibold">
+                    <div className="md:col-span-3 text-xl text-slate-700 dark:text-slate-300 text-right font-semibold">
                       {cost > 0 ? `¥${cost.toFixed(2)}` : '-'}
                     </div>
                   </div>
