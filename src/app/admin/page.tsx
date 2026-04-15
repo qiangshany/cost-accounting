@@ -294,14 +294,27 @@ export default function AdminPage() {
 
     setIsLoading(true);
     
-    // 成本数据的日期区间是销售日期区间的前一天
-    // 单日：from=4.8, to=4.8 → queryFrom=4.7, queryTo=4.7
-    // 区间：from=4.3, to=4.5 → queryFrom=4.2, queryTo=4.4
-    const queryFromDate = new Date(dateRange.from);
-    queryFromDate.setDate(queryFromDate.getDate() - 1);
+    // 在客户端计算今天的日期，避免SSR时区问题
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    const queryEndDate = new Date(dateRange.to);
-    queryEndDate.setDate(queryEndDate.getDate() - 1);
+    const queryToDate = new Date(dateRange.to);
+    queryToDate.setHours(0, 0, 0, 0);
+    
+    // 查询范围判断（与成本列表视图一致）
+    let queryFromDate: Date;
+    let queryEndDate: Date;
+    
+    if (queryToDate.getTime() >= today.getTime()) {
+      // 结束日期包含今天，查询范围改为开始日期到昨天
+      queryFromDate = new Date(dateRange.from);
+      queryEndDate = new Date(today);
+      queryEndDate.setDate(queryEndDate.getDate() - 1);
+    } else {
+      // 结束日期不包含今天，使用原始日期区间
+      queryFromDate = new Date(dateRange.from);
+      queryEndDate = new Date(dateRange.to);
+    }
     
     // 如果查询结束日期早于开始日期，直接返回空数据
     if (queryEndDate < queryFromDate) {
