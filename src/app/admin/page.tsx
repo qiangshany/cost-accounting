@@ -1553,7 +1553,7 @@ function CostAnalysisView({
                   ，成本 <span className="text-xl font-bold text-orange-600 dark:text-orange-400">{unitCost.toFixed(2)} 元/吨</span>
                   ，毛利润 <span className={grossProfit >= 0 ? "text-xl font-bold text-green-600 dark:text-green-400" : "text-xl font-bold text-red-600 dark:text-red-400"}>{grossProfit.toFixed(2)} 元/吨</span>
                 </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-lg text-slate-600 dark:text-slate-400 mt-1">
                   高于此均价的客户 {aboveAvgData.count} 家，销售计划数量共计 {aboveAvgData.quantity.toFixed(2)} 吨，占比 {aboveAvgData.quantityRatio}%
                 </p>
               </div>
