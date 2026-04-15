@@ -262,9 +262,9 @@ export async function GET(request: NextRequest) {
 
       if (yieldResponse.data) {
         for (const item of yieldResponse.data) {
-          // 碱产量乘以浓度系数得到对应浓度的产品产量
+          // 碱产量（不乘以浓度系数）
           const alkaliYield = parseJsonNumber(item.alkali_yield);
-          totalYield += alkaliYield * concentrationFactor;
+          totalYield += alkaliYield;
         }
       }
     }
