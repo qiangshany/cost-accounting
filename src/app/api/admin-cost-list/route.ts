@@ -13,6 +13,27 @@ const CONCENTRATION_CONFIG: Record<string, { factor: number; displayName: string
   '31%盐酸': { factor: 0.32, displayName: '氯碱' },
 };
 
+// 解析JSON格式数字的辅助函数
+// 数据库中数字被存储为 {系数 指数 其他} 格式，如 {240135662000000 -10 false finite true}
+// 实际值 = 系数 × 10^指数
+function parseJsonNumber(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    // 尝试直接解析为数字
+    const num = parseFloat(value);
+    if (!isNaN(num)) return num;
+    
+    // 尝试解析JSON格式 {系数 指数 ...}
+    const match = value.match(/^{(\S+)\s+(-?\d+)/);
+    if (match) {
+      const coefficient = parseFloat(match[1]);
+      const exponent = parseInt(match[2], 10);
+      return coefficient * Math.pow(10, exponent);
+    }
+  }
+  return 0;
+}
+
 // 获取成本列表数据（支持日期区间和产品筛选）
 export async function GET(request: NextRequest) {
   try {
@@ -85,7 +106,7 @@ export async function GET(request: NextRequest) {
         // 累加数量
         for (const item of quantityResponse.data) {
           const name = item.material_name;
-          const qty = parseFloat(item.quantity) || 0;
+          const qty = parseJsonNumber(item.quantity);
           
           if (!materialQuantities[name]) {
             materialQuantities[name] = 0;
@@ -118,7 +139,7 @@ export async function GET(request: NextRequest) {
               .eq('material_name', name)
               .single();
             
-            const dayPrice = priceResponse.data ? parseFloat(priceResponse.data.price) || 0 : 0;
+            const dayPrice = priceResponse.data ? parseJsonNumber(priceResponse.data.price) : 0;
             
             // 获取该日期的数量
             const quantityResponse = await client
@@ -129,7 +150,7 @@ export async function GET(request: NextRequest) {
               .eq('material_name', name)
               .single();
             
-            const dayQuantity = quantityResponse.data ? parseFloat(quantityResponse.data.quantity) || 0 : 0;
+            const dayQuantity = quantityResponse.data ? parseJsonNumber(quantityResponse.data.quantity) : 0;
             
             // 累加该日期的成本
             totalCost += dayQuantity * dayPrice;
@@ -155,7 +176,7 @@ export async function GET(request: NextRequest) {
       if (laborResponse.data) {
         for (const item of laborResponse.data) {
           const name = item.cost_item_name;
-          const amount = parseFloat(item.amount) || 0;
+          const amount = parseJsonNumber(item.amount);
           
           if (!laborAndMaintenance[name]) {
             laborAndMaintenance[name] = 0;
@@ -178,7 +199,7 @@ export async function GET(request: NextRequest) {
       if (periodResponse.data) {
         for (const item of periodResponse.data) {
           const name = item.expense_item_name;
-          const amount = parseFloat(item.amount) || 0;
+          const amount = parseJsonNumber(item.amount);
           
           if (!periodExpenses[name]) {
             periodExpenses[name] = 0;
@@ -201,7 +222,7 @@ export async function GET(request: NextRequest) {
       if (adjustmentResponse.data) {
         for (const item of adjustmentResponse.data) {
           const name = item.adjustment_name;
-          const amount = parseFloat(item.amount) || 0;
+          const amount = parseJsonNumber(item.amount);
           
           if (!adjustments[name]) {
             adjustments[name] = 0;
@@ -242,7 +263,8 @@ export async function GET(request: NextRequest) {
       if (yieldResponse.data) {
         for (const item of yieldResponse.data) {
           // 碱产量乘以浓度系数得到对应浓度的产品产量
-          totalYield += (parseFloat(item.alkali_yield) || 0) * concentrationFactor;
+          const alkaliYield = parseJsonNumber(item.alkali_yield);
+          totalYield += alkaliYield * concentrationFactor;
         }
       }
     }
