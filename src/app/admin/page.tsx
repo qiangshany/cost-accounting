@@ -888,7 +888,17 @@ export default function AdminPage() {
                     );
                   })}
                 </div>
-
+                <div className="mt-6 p-4 bg-sky-50 dark:bg-sky-950/20 rounded-lg border border-sky-100 dark:border-sky-900/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
+                    <span className="text-xl font-bold text-sky-700 dark:text-sky-400">
+                      {(() => {
+                        const sum = Object.values(costListData.materials?.costs || {}).reduce((s, v) => s + (v || 0), 0);
+                        return sum > 0 ? `¥${sum.toFixed(2)}` : '-';
+                      })()}
+                    </span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -927,7 +937,17 @@ export default function AdminPage() {
                     );
                   })}
                 </div>
-
+                <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
+                    <span className="text-xl font-bold text-amber-700 dark:text-amber-400">
+                      {(() => {
+                        const sum = Object.values(costListData.laborAndMaintenance || {}).reduce((s, v) => s + (v || 0), 0);
+                        return sum > 0 ? `¥${sum.toFixed(2)}` : '-';
+                      })()}
+                    </span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -966,7 +986,17 @@ export default function AdminPage() {
                     );
                   })}
                 </div>
-
+                <div className="mt-6 p-4 bg-violet-50 dark:bg-violet-950/20 rounded-lg border border-violet-100 dark:border-violet-900/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
+                    <span className="text-xl font-bold text-violet-700 dark:text-violet-400">
+                      {(() => {
+                        const sum = Object.values(costListData.periodExpenses || {}).reduce((s, v) => s + (v || 0), 0);
+                        return sum > 0 ? `¥${sum.toFixed(2)}` : '-';
+                      })()}
+                    </span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
