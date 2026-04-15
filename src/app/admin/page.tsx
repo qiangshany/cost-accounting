@@ -1272,8 +1272,11 @@ function CostAnalysisView({
   }, [tableData]);
 
   // 计算单位成本和毛利润
-  // concentrationCost = totalCost * 0.53
-  // totalYield = 32%或50%烧碱产量（直接填报的产量）
+  // 新的成本计算逻辑（按纯碱用量比例分配）：
+  // - 总碱产量 = 32%烧碱产量 × 0.32 + 50%烧碱产量 × 0.5
+  // - 32%烧碱成本 = 总成本 × 0.53 × (32%烧碱产量 × 0.32 / 总碱产量)
+  // - 50%烧碱成本 = 总成本 × 0.53 × (50%烧碱产量 × 0.5 / 总碱产量)
+  // 后端已计算好 concentrationCost（已分配的浓度烧碱成本）和 totalYield（对应浓度产量）
   // 吨成本 = concentrationCost / totalYield
   const { unitCost, grossProfit } = useMemo(() => {
     if (!costListData || !costListData.concentrationCost || !costListData.totalYield) {
@@ -1281,14 +1284,14 @@ function CostAnalysisView({
       return { unitCost: 0, grossProfit: avgPrice };
     }
 
-    // 对应浓度烧碱的成本（已乘0.53）
+    // 后端已分配好的浓度烧碱成本
     const concentrationCost = costListData.concentrationCost;
 
-    // 直接使用填报的32%或50%烧碱产量
+    // 后端返回的对应浓度产量（32%烧碱或50%烧碱的产量）
     const totalYield = costListData.totalYield;
 
     // 吨成本（元/吨）= concentrationCost / totalYield
-    // 直接使用填报的产量，不需要再除以浓度系数
+    // 直接使用后端返回的已分配成本和产量
     const cost = totalYield > 0 
       ? concentrationCost / totalYield 
       : 0;

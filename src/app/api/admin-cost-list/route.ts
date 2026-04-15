@@ -40,7 +40,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    let product = searchParams.get('product') || '32%烧碱';
+    const productParam = searchParams.get('product') || '32%烧碱'; // 保存原始参数用于判断
+    let product = productParam;
 
     // 获取浓度系数和数据库产品名称映射
     const config = CONCENTRATION_CONFIG[product] || { factor: 0.32, displayName: '氯碱' };
@@ -249,17 +250,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 7. 获取产量数据
-    // 根据产品类型获取对应的产量：32%烧碱用yield_32_percent，50%烧碱用yield_50_percent
-    let totalYield = 0;
+    // 7. 获取32%和50%烧碱的产量
+    let yield32Percent = 0; // 32%烧碱产量
+    let yield50Percent = 0; // 50%烧碱产量
     
-    // 确定使用哪个产量字段（数据库列名）
-    let yieldField = 'yield_32_percent'; // 默认32%烧碱
-    if (product === '50%烧碱' || product.includes('50%')) {
-      yieldField = 'yield_50_percent';
-    }
-    
-    // 从production_yields表获取产量
     for (const date of validDates) {
       const yieldResponse = await client
         .from('production_yields')
@@ -269,30 +263,53 @@ export async function GET(request: NextRequest) {
 
       if (yieldResponse.data) {
         for (const item of yieldResponse.data) {
-          // 根据产品类型读取对应的产量字段
-          const yieldValue = yieldField === 'yield_50_percent' 
-            ? parseJsonNumber(item.yield_50_percent)
-            : parseJsonNumber(item.yield_32_percent);
-          totalYield += yieldValue;
+          yield32Percent += parseJsonNumber(item.yield_32_percent);
+          yield50Percent += parseJsonNumber(item.yield_50_percent);
         }
       }
     }
     
-    // 根据产品类型调整浓度系数
-    let effectiveConcentrationFactor = concentrationFactor;
-    if (product === '50%烧碱' || product.includes('50%')) {
-      effectiveConcentrationFactor = 0.50;
+    // 计算总碱产量（纯碱数量）
+    // 总碱产量 = 32%烧碱产量 × 0.32 + 50%烧碱产量 × 0.5
+    const totalAlkaliQuantity = yield32Percent * 0.32 + yield50Percent * 0.5;
+    
+    // 计算分配系数
+    // 32%烧碱的纯碱占比 = 32%烧碱产量 × 0.32 / 总碱产量
+    // 50%烧碱的纯碱占比 = 50%烧碱产量 × 0.5 / 总碱产量
+    let yield32PercentAllocation = 0;
+    let yield50PercentAllocation = 0;
+    if (totalAlkaliQuantity > 0) {
+      yield32PercentAllocation = (yield32Percent * 0.32) / totalAlkaliQuantity;
+      yield50PercentAllocation = (yield50Percent * 0.5) / totalAlkaliQuantity;
     }
 
-    // 8. 计算对应浓度烧碱的总成本
+    // 8. 计算总成本
     // 总成本 = 原材料成本 + 人工与维护成本 + 期间费用 - 调整项
-    // 浓度烧碱成本 = 总成本 × 0.53
     const materialCost = Object.values(materialCosts).reduce((sum, val) => sum + val, 0);
     const laborCost = Object.values(laborAndMaintenance).reduce((sum, val) => sum + val, 0);
     const periodCost = Object.values(periodExpenses).reduce((sum, val) => sum + val, 0);
     const adjustmentCost = Object.values(adjustments).reduce((sum, val) => sum + val, 0);
     const totalCost = materialCost + laborCost + periodCost - adjustmentCost;
+    
+    // 碱成本 = 总成本 × 0.53
     const concentrationCost = totalCost * 0.53;
+    
+    // 根据产品类型返回对应的浓度烧碱成本
+    // 32%烧碱成本 = 总成本 × 0.53 × 分配系数
+    // 50%烧碱成本 = 总成本 × 0.53 × 分配系数
+    const is50Percent = productParam === '50%烧碱' || productParam.includes('50%');
+    const effectiveConcentrationCost = is50Percent
+      ? concentrationCost * yield50PercentAllocation
+      : concentrationCost * yield32PercentAllocation;
+    
+    // 根据产品类型返回对应的产量（用于吨成本计算）
+    // 吨成本 = 浓度烧碱成本 / 对应浓度产量
+    const effectiveYield = is50Percent
+      ? yield50Percent
+      : yield32Percent;
+    
+    // 浓度系数（用于显示）
+    const effectiveConcentrationFactor = is50Percent ? 0.50 : 0.32;
 
     return NextResponse.json({
       success: true,
@@ -306,9 +323,14 @@ export async function GET(request: NextRequest) {
         periodExpenses,
         adjustments,
         workshops: Array.from(workshopSet),
-        totalYield,
+        // 产量数据
+        yield32Percent,
+        yield50Percent,
+        totalAlkaliQuantity,
+        // 成本数据
+        totalYield: effectiveYield, // 用于吨成本计算的对应浓度产量
         totalCost,
-        concentrationCost,
+        concentrationCost: effectiveConcentrationCost, // 根据产品分配的浓度烧碱成本
         concentrationFactor: effectiveConcentrationFactor
       }
     });
