@@ -1,29 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+// 浓度系数配置
+const CONCENTRATION_CONFIG: Record<string, { factor: number; displayName: string }> = {
+  '32%烧碱': { factor: 0.32, displayName: '氯碱' },
+  '32%液碱': { factor: 0.32, displayName: '氯碱' },
+  '32%食品级烧碱': { factor: 0.32, displayName: '氯碱' },
+  '32%工业级烧碱': { factor: 0.32, displayName: '氯碱' },
+  '50%烧碱': { factor: 0.50, displayName: '氯碱' },
+  '50%液碱': { factor: 0.50, displayName: '氯碱' },
+  '氯碱': { factor: 0.32, displayName: '氯碱' },
+  '31%盐酸': { factor: 0.32, displayName: '氯碱' },
+};
+
 // 获取成本列表数据（支持日期区间和产品筛选）
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    let product = searchParams.get('product') || '32%液碱';
+    let product = searchParams.get('product') || '32%烧碱';
 
-    // 产品名称映射：前端选择的物料名称映射到数据库中的产品名称
-    // 32%烧碱、32%液碱、氯碱 统一映射到数据库中的 "氯碱"
-    const productMapping: Record<string, string> = {
-      '32%烧碱': '氯碱',
-      '32%液碱': '氯碱',
-      '氯碱': '氯碱',
-      '31%盐酸': '氯碱', // 盐酸也是氯碱产品
-      '31%食品级烧碱': '氯碱',
-      '32%食品级烧碱': '氯碱',
-      '32%工业级烧碱': '氯碱',
-    };
+    // 获取浓度系数
+    const config = CONCENTRATION_CONFIG[product] || { factor: 0.32, displayName: '氯碱' };
+    const concentrationFactor = config.factor;
+    const dbProductName = config.displayName;
     
-    // 映射产品名称
-    product = productMapping[product] || '氯碱';
-
     if (!startDate || !endDate) {
       return NextResponse.json({
         success: false,
@@ -223,35 +225,34 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 7. 获取产量数据并计算总产量（碱产量）
+    // 7. 获取产量数据并计算总产量（碱产量乘以浓度系数）
     let totalYield = 0;
     
-    // 从production_yields表获取产量（虽然不用于判断日期是否有效，但用于显示总产量）
+    // 从production_yields表获取产量
     for (const date of validDates) {
       const yieldResponse = await client
         .from('production_yields')
         .select('*')
-        .eq('product', product)
+        .eq('product', dbProductName)
         .eq('report_date', date);
 
       if (yieldResponse.data) {
         for (const item of yieldResponse.data) {
-          // 氯碱/32%烧碱产品使用碱产量
-          if (product === '氯碱') {
-            totalYield += parseFloat(item.alkali_yield) || 0;
-          }
+          // 碱产量乘以浓度系数得到对应浓度的产品产量
+          totalYield += (parseFloat(item.alkali_yield) || 0) * concentrationFactor;
         }
       }
     }
 
-    // 8. 计算32%烧碱对应的总成本
-    // 32%烧碱总成本 = (原材料成本 + 人工与维护成本 + 期间费用 - 调整项) × 0.53
+    // 8. 计算对应浓度烧碱的总成本
+    // 总成本 = 原材料成本 + 人工与维护成本 + 期间费用 - 调整项
+    // 浓度烧碱成本 = 总成本 × 0.53
     const materialCost = Object.values(materialCosts).reduce((sum, val) => sum + val, 0);
     const laborCost = Object.values(laborAndMaintenance).reduce((sum, val) => sum + val, 0);
     const periodCost = Object.values(periodExpenses).reduce((sum, val) => sum + val, 0);
     const adjustmentCost = Object.values(adjustments).reduce((sum, val) => sum + val, 0);
     const totalCost = materialCost + laborCost + periodCost - adjustmentCost;
-    const cost32Percent = totalCost * 0.53;
+    const concentrationCost = totalCost * 0.53;
 
     return NextResponse.json({
       success: true,
@@ -267,7 +268,8 @@ export async function GET(request: NextRequest) {
         workshops: Array.from(workshopSet),
         totalYield,
         totalCost,
-        cost32Percent
+        concentrationCost,
+        concentrationFactor
       }
     });
   } catch (error) {
