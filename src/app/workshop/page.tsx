@@ -50,7 +50,8 @@ interface CostData {
 }
 
 interface ProductionYieldData {
-  alkali_yield?: number;
+  yield32Percent?: number;
+  yield50Percent?: number;
   chlorine_yield?: number;
   hydrochloric_acid_yield?: number;
 }
@@ -85,7 +86,8 @@ export default function WorkshopPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [username, setUsername] = useState<string>('');
   const [yields, setYields] = useState({
-    alkaliYield: '', // 碱产量（字符串存储）
+    yield32Percent: '', // 32%烧碱产量（字符串存储）
+    yield50Percent: '', // 50%烧碱产量（字符串存储）
     chlorineYield: '', // 氯产量
     hydrochloricAcidYield: '', // 盐酸产量
   });
@@ -162,8 +164,11 @@ export default function WorkshopPage() {
         // 加载产量数据
         if (yieldData.success && yieldData.data && yieldData.data.length > 0) {
           const yieldRecord = yieldData.data[0] as ProductionYieldData;
-          if (yieldRecord.alkali_yield !== undefined) {
-            setYields(prev => ({ ...prev, alkaliYield: yieldRecord.alkali_yield === null ? '' : String(yieldRecord.alkali_yield) }));
+          if (yieldRecord.yield32Percent !== undefined) {
+            setYields(prev => ({ ...prev, yield32Percent: yieldRecord.yield32Percent === null ? '' : String(yieldRecord.yield32Percent) }));
+          }
+          if (yieldRecord.yield50Percent !== undefined) {
+            setYields(prev => ({ ...prev, yield50Percent: yieldRecord.yield50Percent === null ? '' : String(yieldRecord.yield50Percent) }));
           }
           if (yieldRecord.chlorine_yield !== undefined) {
             setYields(prev => ({ ...prev, chlorineYield: yieldRecord.chlorine_yield === null ? '' : String(yieldRecord.chlorine_yield) }));
@@ -173,7 +178,7 @@ export default function WorkshopPage() {
           }
         } else {
           // 新日期没有数据，重置产量为空
-          setYields({ alkaliYield: '', chlorineYield: '', hydrochloricAcidYield: '' });
+          setYields({ yield32Percent: '', yield50Percent: '', chlorineYield: '', hydrochloricAcidYield: '' });
         }
 
         // 初始化空数据
@@ -275,7 +280,7 @@ export default function WorkshopPage() {
     setIsLoading(true);
     try {
       // 提交产量数据（将字符串转换为数字）
-      const submitYield = yields.alkaliYield || yields.chlorineYield || yields.hydrochloricAcidYield;
+      const submitYield = yields.yield32Percent || yields.yield50Percent || yields.chlorineYield || yields.hydrochloricAcidYield;
       if (submitYield) {
         const yieldResponse = await fetch('/api/production-yields', {
           method: 'POST',
@@ -284,7 +289,8 @@ export default function WorkshopPage() {
             report_date: selectedDate,
             product: selectedProduct,
             workshop: selectedWorkshop,
-            alkali_yield: yields.alkaliYield === '' ? 0 : parseFloat(yields.alkaliYield) || 0,
+            yield32Percent: yields.yield32Percent === '' ? 0 : parseFloat(yields.yield32Percent) || 0,
+            yield50Percent: yields.yield50Percent === '' ? 0 : parseFloat(yields.yield50Percent) || 0,
             chlorine_yield: yields.chlorineYield === '' ? 0 : parseFloat(yields.chlorineYield) || 0,
             hydrochloric_acid_yield: yields.hydrochloricAcidYield === '' ? 0 : parseFloat(yields.hydrochloricAcidYield) || 0,
           }),
@@ -491,16 +497,30 @@ export default function WorkshopPage() {
               </div>
               <div className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
-                  <Label htmlFor="alkali-yield" className="md:col-span-9 text-xl font-medium text-slate-600 dark:text-slate-400">
-                    碱产量
+                  <Label htmlFor="yield32-percent" className="md:col-span-9 text-xl font-medium text-slate-600 dark:text-slate-400">
+                    32%烧碱产量
                   </Label>
                   <Input
-                    id="alkali-yield"
+                    id="yield32-percent"
                     type="text"
                     inputMode="decimal"
                     placeholder="0"
-                    value={yields.alkaliYield}
-                    onChange={(e) => setYields(prev => ({ ...prev, alkaliYield: e.target.value }))}
+                    value={yields.yield32Percent}
+                    onChange={(e) => setYields(prev => ({ ...prev, yield32Percent: e.target.value }))}
+                    className="md:col-span-3 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
+                  <Label htmlFor="yield50-percent" className="md:col-span-9 text-xl font-medium text-slate-600 dark:text-slate-400">
+                    50%烧碱产量
+                  </Label>
+                  <Input
+                    id="yield50-percent"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={yields.yield50Percent}
+                    onChange={(e) => setYields(prev => ({ ...prev, yield50Percent: e.target.value }))}
                     className="md:col-span-3 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
                   />
                 </div>

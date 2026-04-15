@@ -105,7 +105,8 @@ export const productionYields = pgTable("production_yields", {
 	reportDate: date("report_date").notNull(),
 	product: varchar({ length: 50 }).notNull(),
 	workshop: varchar({ length: 50 }).notNull(),
-	alkaliYield: numeric("alkali_yield", { precision: 20, scale:  10 }),
+	yield32Percent: numeric("yield_32_percent", { precision: 20, scale: 10 }), // 32%烧碱产量
+	yield50Percent: numeric("yield_50_percent", { precision: 20, scale: 10 }), // 50%烧碱产量
 	chlorineYield: numeric("chlorine_yield", { precision: 20, scale:  10 }),
 	hydrochloricAcidYield: numeric("hydrochloric_acid_yield", { precision: 20, scale:  10 }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),

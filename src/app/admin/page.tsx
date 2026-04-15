@@ -1273,9 +1273,8 @@ function CostAnalysisView({
 
   // 计算单位成本和毛利润
   // concentrationCost = totalCost * 0.53
-  // totalYield = 碱产量
-  // 浓度产品产量 = totalYield / concentrationFactor
-  // 吨成本 = concentrationCost / (totalYield / concentrationFactor)
+  // totalYield = 32%或50%烧碱产量（直接填报的产量）
+  // 吨成本 = concentrationCost / totalYield
   const { unitCost, grossProfit } = useMemo(() => {
     if (!costListData || !costListData.concentrationCost || !costListData.totalYield) {
       // 如果没有成本数据，仍然计算毛利（成本为0时毛利=均价）
@@ -1285,15 +1284,13 @@ function CostAnalysisView({
     // 对应浓度烧碱的成本（已乘0.53）
     const concentrationCost = costListData.concentrationCost;
 
-    // 碱产量
+    // 直接使用填报的32%或50%烧碱产量
     const totalYield = costListData.totalYield;
 
-    // 浓度系数
-    const concentrationFactor = costListData.concentrationFactor || 0.32;
-
-    // 吨成本（元/吨）= concentrationCost / (totalYield / concentrationFactor)
-    const cost = totalYield > 0 && concentrationFactor > 0 
-      ? concentrationCost / (totalYield / concentrationFactor) 
+    // 吨成本（元/吨）= concentrationCost / totalYield
+    // 直接使用填报的产量，不需要再除以浓度系数
+    const cost = totalYield > 0 
+      ? concentrationCost / totalYield 
       : 0;
 
     // 毛利润 = 销售均价 - 单位成本

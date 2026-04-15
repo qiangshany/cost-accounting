@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
       report_date,
       product,
       workshop,
-      alkali_yield,
+      yield32Percent,
+      yield50Percent,
       chlorine_yield,
       hydrochloric_acid_yield,
     } = body;
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     const client = getSupabaseClient();
 
-    // 使用 upsert 实现幂等性
+    // 使用 upsert 实现幂等性，使用数据库列名
     const { data, error } = await client
       .from('production_yields')
       .upsert(
@@ -78,7 +79,8 @@ export async function POST(request: NextRequest) {
           report_date,
           product,
           workshop,
-          alkali_yield: alkali_yield || 0,
+          yield_32_percent: yield32Percent || 0,
+          yield_50_percent: yield50Percent || 0,
           chlorine_yield: chlorine_yield || 0,
           hydrochloric_acid_yield: hydrochloric_acid_yield || 0,
           updated_at: new Date().toISOString(),

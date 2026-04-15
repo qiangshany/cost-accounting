@@ -249,24 +249,39 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 7. 获取产量数据并计算总产量（碱产量乘以浓度系数）
+    // 7. 获取产量数据
+    // 根据产品类型获取对应的产量：32%烧碱用yield_32_percent，50%烧碱用yield_50_percent
     let totalYield = 0;
+    
+    // 确定使用哪个产量字段（数据库列名）
+    let yieldField = 'yield_32_percent'; // 默认32%烧碱
+    if (product === '50%烧碱' || product.includes('50%')) {
+      yieldField = 'yield_50_percent';
+    }
     
     // 从production_yields表获取产量
     for (const date of validDates) {
       const yieldResponse = await client
         .from('production_yields')
-        .select('*')
+        .select('yield_32_percent, yield_50_percent')
         .eq('product', dbProductName)
         .eq('report_date', date);
 
       if (yieldResponse.data) {
         for (const item of yieldResponse.data) {
-          // 碱产量（不乘以浓度系数）
-          const alkaliYield = parseJsonNumber(item.alkali_yield);
-          totalYield += alkaliYield;
+          // 根据产品类型读取对应的产量字段
+          const yieldValue = yieldField === 'yield_50_percent' 
+            ? parseJsonNumber(item.yield_50_percent)
+            : parseJsonNumber(item.yield_32_percent);
+          totalYield += yieldValue;
         }
       }
+    }
+    
+    // 根据产品类型调整浓度系数
+    let effectiveConcentrationFactor = concentrationFactor;
+    if (product === '50%烧碱' || product.includes('50%')) {
+      effectiveConcentrationFactor = 0.50;
     }
 
     // 8. 计算对应浓度烧碱的总成本
@@ -294,7 +309,7 @@ export async function GET(request: NextRequest) {
         totalYield,
         totalCost,
         concentrationCost,
-        concentrationFactor
+        concentrationFactor: effectiveConcentrationFactor
       }
     });
   } catch (error) {
