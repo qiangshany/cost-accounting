@@ -283,10 +283,10 @@ export default function AdminPage() {
   };
   
   // 加载成本分析的成本数据
-  // 规则：
-  // - 单日（如4.8）：计算前一天的吨成本（4.7）
-  // - 区间（如4.3-4.5）：计算区间前移一天的吨成本（4.2-4.4）
-  // 均价与日期/日期区间对应，不错位
+  // 规则：成本分析日期始终是销售日期的前一天
+  // - 选择15日 → 查询14日的成本
+  // - 选择14日 → 查询13日的成本（无数据显示0）
+  // - 区间（如4.3-4.5）→ 查询前移一天的区间（4.2-4.4）
   const loadAnalysisCostData = async () => {
     if (!dateRange.from || !dateRange.to) {
       return;
@@ -294,27 +294,12 @@ export default function AdminPage() {
 
     setIsLoading(true);
     
-    // 在客户端计算今天的日期，避免SSR时区问题
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // 成本数据的日期区间始终是销售日期区间的前一天
+    const queryFromDate = new Date(dateRange.from);
+    queryFromDate.setDate(queryFromDate.getDate() - 1);
     
-    const queryToDate = new Date(dateRange.to);
-    queryToDate.setHours(0, 0, 0, 0);
-    
-    // 查询范围判断（与成本列表视图一致）
-    let queryFromDate: Date;
-    let queryEndDate: Date;
-    
-    if (queryToDate.getTime() >= today.getTime()) {
-      // 结束日期包含今天，查询范围改为开始日期到昨天
-      queryFromDate = new Date(dateRange.from);
-      queryEndDate = new Date(today);
-      queryEndDate.setDate(queryEndDate.getDate() - 1);
-    } else {
-      // 结束日期不包含今天，使用原始日期区间
-      queryFromDate = new Date(dateRange.from);
-      queryEndDate = new Date(dateRange.to);
-    }
+    const queryEndDate = new Date(dateRange.to);
+    queryEndDate.setDate(queryEndDate.getDate() - 1);
     
     // 如果查询结束日期早于开始日期，直接返回空数据
     if (queryEndDate < queryFromDate) {
