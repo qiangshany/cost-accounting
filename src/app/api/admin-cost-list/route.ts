@@ -21,10 +21,13 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate');
     let product = searchParams.get('product') || '32%烧碱';
 
-    // 获取浓度系数
+    // 获取浓度系数和数据库产品名称映射
     const config = CONCENTRATION_CONFIG[product] || { factor: 0.32, displayName: '氯碱' };
     const concentrationFactor = config.factor;
     const dbProductName = config.displayName;
+    
+    // 将产品参数映射为数据库中的产品名称
+    product = dbProductName;
     
     if (!startDate || !endDate) {
       return NextResponse.json({
