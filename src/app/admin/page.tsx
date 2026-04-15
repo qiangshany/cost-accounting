@@ -123,6 +123,7 @@ interface SummaryData {
   };
   laborAndMaintenance: Record<string, number>;
   periodExpenses: Record<string, number>;
+  adjustments: Record<string, number>; // 调整项
   workshops: string[];
   totalYield: number; // 碱产量
   totalCost: number; // 总成本
@@ -156,6 +157,7 @@ export default function AdminPage() {
     materials: { quantities: {}, costs: {}, prices: {} },
     laborAndMaintenance: {},
     periodExpenses: {},
+    adjustments: {},
     workshops: [],
     totalYield: 0,
     totalCost: 0,
@@ -167,6 +169,7 @@ export default function AdminPage() {
     materials: { quantities: {}, costs: {}, prices: {} },
     laborAndMaintenance: {},
     periodExpenses: {},
+    adjustments: {},
     workshops: [],
     totalYield: 0,
     totalCost: 0,
@@ -218,6 +221,7 @@ export default function AdminPage() {
         materials: { quantities: {}, costs: {}, prices: {} },
         laborAndMaintenance: {},
         periodExpenses: {},
+        adjustments: {},
         workshops: [],
         totalYield: 0,
         totalCost: 0,
@@ -248,7 +252,7 @@ export default function AdminPage() {
           materials: { quantities: {}, costs: {}, prices: {} },
           laborAndMaintenance: {},
           periodExpenses: {},
-  
+          adjustments: {},
           workshops: [],
           totalYield: 0,
           totalCost: 0,
@@ -261,7 +265,7 @@ export default function AdminPage() {
         materials: { quantities: {}, costs: {}, prices: {} },
         laborAndMaintenance: {},
         periodExpenses: {},
-
+        adjustments: {},
         workshops: [],
         totalYield: 0,
         totalCost: 0,
@@ -299,7 +303,7 @@ export default function AdminPage() {
         materials: { quantities: {}, costs: {}, prices: {} },
         laborAndMaintenance: {},
         periodExpenses: {},
-
+        adjustments: {},
         workshops: [],
         totalYield: 0,
         totalCost: 0,
@@ -333,7 +337,7 @@ export default function AdminPage() {
           materials: { quantities: {}, costs: {}, prices: {} },
           laborAndMaintenance: {},
           periodExpenses: {},
-  
+          adjustments: {},
           workshops: [],
           totalYield: 0,
           totalCost: 0,
@@ -346,7 +350,7 @@ export default function AdminPage() {
         materials: { quantities: {}, costs: {}, prices: {} },
         laborAndMaintenance: {},
         periodExpenses: {},
-
+        adjustments: {},
         workshops: [],
         totalYield: 0,
         totalCost: 0,
@@ -600,16 +604,17 @@ export default function AdminPage() {
   };
 
   // 计算小计
-  const calculateSubtotal = (obj: Record<string, number>) => {
-    return Object.values(obj).reduce((sum, val) => sum + (val || 0), 0);
+  const calculateSubtotal = (obj: Record<string, number> | undefined) => {
+    return Object.values(obj || {}).reduce((sum, val) => sum + (val || 0), 0);
   };
 
   // 判断是否有任何数据
   const hasAnyData = () => {
-    const hasMaterials = Object.keys(costListData.materials.quantities).length > 0;
-    const hasLabor = Object.keys(costListData.laborAndMaintenance).length > 0;
-    const hasPeriod = Object.keys(costListData.periodExpenses).length > 0;
-    return hasMaterials || hasLabor || hasPeriod;
+    const hasMaterials = Object.keys(costListData.materials?.quantities || {}).length > 0;
+    const hasLabor = Object.keys(costListData.laborAndMaintenance || {}).length > 0;
+    const hasPeriod = Object.keys(costListData.periodExpenses || {}).length > 0;
+    const hasAdjustments = Object.keys(costListData.adjustments || {}).length > 0;
+    return hasMaterials || hasLabor || hasPeriod || hasAdjustments;
   };
 
   // 清除旧数据
@@ -858,9 +863,9 @@ export default function AdminPage() {
                 </div>
                 <div className="space-y-3">
                   {MATERIAL_ITEMS.map((item) => {
-                    const quantity = costListData.materials.quantities[item.name] || 0;
-                    const price = costListData.materials.prices[item.name] || 0;
-                    const cost = costListData.materials.costs[item.name] || 0;
+                    const quantity = costListData.materials?.quantities?.[item.name] || 0;
+                    const price = costListData.materials?.prices?.[item.name] || 0;
+                    const cost = costListData.materials?.costs?.[item.name] || 0;
 
                     return (
                       <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
@@ -883,16 +888,7 @@ export default function AdminPage() {
                     );
                   })}
                 </div>
-                <div className="mt-6 p-4 bg-sky-50 dark:bg-sky-950/20 rounded-lg border border-sky-100 dark:border-sky-900/30">
-                  <div className="flex items-center justify-between">
-                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
-                    <span className="text-xl font-bold text-sky-700 dark:text-sky-400">
-                      {calculateSubtotal(costListData.materials.costs) > 0 
-                        ? `¥${calculateSubtotal(costListData.materials.costs).toFixed(2)}` 
-                        : '-'}
-                    </span>
-                  </div>
-                </div>
+
               </CardContent>
             </Card>
 
@@ -915,7 +911,7 @@ export default function AdminPage() {
                 </div>
                 <div className="space-y-3">
                   {LABOR_MAINTENANCE_ITEMS.map((item) => {
-                    const amount = costListData.laborAndMaintenance[item.name] || 0;
+                    const amount = costListData.laborAndMaintenance?.[item.name] || 0;
                     return (
                       <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
                         <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
@@ -931,16 +927,7 @@ export default function AdminPage() {
                     );
                   })}
                 </div>
-                <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-100 dark:border-amber-900/30">
-                  <div className="flex items-center justify-between">
-                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
-                    <span className="text-xl font-bold text-amber-700 dark:text-amber-400">
-                      {calculateSubtotal(costListData.laborAndMaintenance) > 0 
-                        ? `¥${calculateSubtotal(costListData.laborAndMaintenance).toFixed(2)}` 
-                        : '-'}
-                    </span>
-                  </div>
-                </div>
+
               </CardContent>
             </Card>
 
@@ -963,7 +950,7 @@ export default function AdminPage() {
                 </div>
                 <div className="space-y-3">
                   {PERIOD_EXPENSE_ITEMS.map((item) => {
-                    const amount = costListData.periodExpenses[item.name] || 0;
+                    const amount = costListData.periodExpenses?.[item.name] || 0;
                     return (
                       <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
                         <div className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
@@ -979,16 +966,7 @@ export default function AdminPage() {
                     );
                   })}
                 </div>
-                <div className="mt-6 p-4 bg-violet-50 dark:bg-violet-950/20 rounded-lg border border-violet-100 dark:border-violet-900/30">
-                  <div className="flex items-center justify-between">
-                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300">小计</span>
-                    <span className="text-xl font-bold text-violet-700 dark:text-violet-400">
-                      {calculateSubtotal(costListData.periodExpenses) > 0 
-                        ? `¥${calculateSubtotal(costListData.periodExpenses).toFixed(2)}` 
-                        : '-'}
-                    </span>
-                  </div>
-                </div>
+
               </CardContent>
             </Card>
 
@@ -1002,34 +980,40 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
                     <span className="text-xl text-slate-600 dark:text-slate-400">直接材料</span>
                     <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-                      {calculateSubtotal(costListData.materials.costs) > 0 
-                        ? `¥${calculateSubtotal(costListData.materials.costs).toFixed(2)}` 
-                        : '-'}
+                      {(() => {
+                        const sum = Object.values(costListData.materials?.costs || {}).reduce((s, v) => s + (v || 0), 0);
+                        return sum > 0 ? `¥${sum.toFixed(2)}` : '-';
+                      })()}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
                     <span className="text-xl text-slate-600 dark:text-slate-400">制造费用</span>
                     <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-                      {calculateSubtotal(costListData.laborAndMaintenance) > 0 
-                        ? `¥${calculateSubtotal(costListData.laborAndMaintenance).toFixed(2)}` 
-                        : '-'}
+                      {(() => {
+                        const sum = Object.values(costListData.laborAndMaintenance || {}).reduce((s, v) => s + (v || 0), 0);
+                        return sum > 0 ? `¥${sum.toFixed(2)}` : '-';
+                      })()}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
                     <span className="text-xl text-slate-600 dark:text-slate-400">其他费用</span>
                     <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-                      {calculateSubtotal(costListData.periodExpenses) > 0 
-                        ? `¥${calculateSubtotal(costListData.periodExpenses).toFixed(2)}` 
-                        : '-'}
+                      {(() => {
+                        const sum = Object.values(costListData.periodExpenses || {}).reduce((s, v) => s + (v || 0), 0);
+                        return sum > 0 ? `¥${sum.toFixed(2)}` : '-';
+                      })()}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-4 px-6 bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-700 dark:to-emerald-800 text-white rounded-xl mt-6 shadow-md">
                     <span className="text-2xl font-bold">总成本合计</span>
                     <span className="text-4xl font-bold">
                       {(() => {
-                        const total = calculateSubtotal(costListData.materials.costs) +
-                            calculateSubtotal(costListData.laborAndMaintenance) +
-                            calculateSubtotal(costListData.periodExpenses);
+                        // 直接对所有单项求和后保留2位小数，减去调整项
+                        const materialTotal = Object.values(costListData.materials?.costs || {}).reduce((s, v) => s + (v || 0), 0);
+                        const laborTotal = Object.values(costListData.laborAndMaintenance || {}).reduce((s, v) => s + (v || 0), 0);
+                        const periodTotal = Object.values(costListData.periodExpenses || {}).reduce((s, v) => s + (v || 0), 0);
+                        const adjustmentTotal = Object.values(costListData.adjustments || {}).reduce((s, v) => s + (v || 0), 0);
+                        const total = materialTotal + laborTotal + periodTotal - adjustmentTotal;
                         return total > 0 ? `¥${total.toFixed(2)}` : '-';
                       })()}
                     </span>
