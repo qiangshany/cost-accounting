@@ -1,0 +1,513 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
+import { Save, Factory, TrendingUp, Shield, LogOut, Calendar as CalendarIcon } from 'lucide-react';
+
+// 碱车间直接材料（按用户要求配置）
+const MATERIAL_ITEMS: { name: string; unit: string }[] = [
+  { name: '矿盐', unit: '吨' },
+  { name: '原盐', unit: '吨' },
+  { name: '电', unit: '度' },
+  { name: '蒸汽', unit: '吨' },
+  { name: '纯碱', unit: '千克' },
+  { name: '31%盐酸', unit: '吨' },
+  { name: '98%硫酸', unit: '吨' },
+  { name: '32%烧碱', unit: '吨' },
+  { name: '液氯', unit: '吨' },
+  { name: '三氯化铁', unit: '吨' },
+  { name: '亚硫酸钠', unit: '吨' },
+  { name: '除盐水', unit: '吨' },
+];
+
+// 碱车间制造费用（与生产管理部共享）
+const LABOR_MAINTENANCE_ITEMS: { name: string; unit: string }[] = [
+  { name: '工人工资及保险', unit: '元' },
+  { name: '维修费', unit: '元' },
+  { name: '外协维修', unit: '元' },
+  { name: '盐泥、铲销费用', unit: '元' },
+  { name: '外协车费用', unit: '元' },
+  { name: '污水处理费用', unit: '元' },
+  { name: '今日折旧', unit: '元' },
+];
+
+// 工资及福利的源字段名
+const SALARY_SOURCE_KEY = '工资及福利';
+
+interface CostData {
+  materials: Record<string, string>;
+  laborAndMaintenance: Record<string, string>;
+}
+
+interface ProductionYieldData {
+  yield32Percent?: number;
+  yield50Percent?: number;
+  chlorine_yield?: number;
+  hydrochloric_acid_yield?: number;
+}
+
+export default function WorkshopPage() {
+  const router = useRouter();
+  const [selectedWorkshop, setSelectedWorkshop] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<string>('氯碱');
+  const [costData, setCostData] = useState<CostData>({
+    materials: {},
+    laborAndMaintenance: {},
+  });
+  const [purchasePrices, setPurchasePrices] = useState<Record<string, number>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [username, setUsername] = useState<string>('');
+  const [yields, setYields] = useState({
+    yield32Percent: '',
+    yield50Percent: '',
+    chlorineYield: '',
+    hydrochloricAcidYield: '',
+  });
+
+  const selectedDateObj = selectedDate ? new Date(selectedDate + 'T00:00:00') : undefined;
+
+  // 检查登录状态和角色
+  useEffect(() => {
+    const loggedIn = localStorage.getItem('isLoggedIn');
+    const userRole = localStorage.getItem('userRole');
+    const user = localStorage.getItem('username');
+
+    if (loggedIn !== 'true' || userRole !== 'workshop') {
+      router.push('/');
+      return;
+    }
+
+    setUsername(user || '');
+
+    if (user === '碱车间') {
+      setSelectedWorkshop('碱车间');
+    } else if (user === '氯车间') {
+      setSelectedWorkshop('氯车间');
+    } else {
+      setSelectedWorkshop('车间一');
+    }
+  }, [router]);
+
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    setSelectedDate(today);
+  }, []);
+
+  // 初始化成本项
+  useEffect(() => {
+    const initCostData = () => {
+      const materials: Record<string, string> = {};
+      MATERIAL_ITEMS.forEach(item => materials[item.name] = '');
+      const laborAndMaintenance: Record<string, string> = {};
+      LABOR_MAINTENANCE_ITEMS.forEach(item => laborAndMaintenance[item.name] = '');
+      return { materials, laborAndMaintenance };
+    };
+    setCostData(initCostData());
+  }, []);
+
+  // 加载现有数据
+  useEffect(() => {
+    const loadExistingData = async () => {
+      if (!selectedDate || !selectedProduct || !selectedWorkshop) return;
+
+      try {
+        const [yieldResponse, materialResponse, laborResponse, priceResponse] = await Promise.all([
+          fetch(`/api/production-yields?date=${selectedDate}&product=${selectedProduct}&workshop=${selectedWorkshop}`),
+          fetch(`/api/material-costs?date=${selectedDate}&product=${selectedProduct}&workshop=${selectedWorkshop}`),
+          fetch(`/api/labor-maintenance-costs?date=${selectedDate}&product=${selectedProduct}&workshop=${selectedWorkshop}`),
+          fetch(`/api/purchase-price?date=${selectedDate}`),
+        ]);
+
+        const [yieldData, materialData, laborData, priceData] = await Promise.all([
+          yieldResponse.json(),
+          materialResponse.json(),
+          laborResponse.json(),
+          priceResponse.json(),
+        ]);
+
+        // 加载产量数据
+        if (yieldData.success && yieldData.data && yieldData.data.length > 0) {
+          const yieldRecord = yieldData.data[0] as ProductionYieldData;
+          if (yieldRecord.yield32Percent !== undefined) {
+            setYields(prev => ({ ...prev, yield32Percent: yieldRecord.yield32Percent === null ? '' : String(yieldRecord.yield32Percent) }));
+          }
+          if (yieldRecord.yield50Percent !== undefined) {
+            setYields(prev => ({ ...prev, yield50Percent: yieldRecord.yield50Percent === null ? '' : String(yieldRecord.yield50Percent) }));
+          }
+          if (yieldRecord.chlorine_yield !== undefined) {
+            setYields(prev => ({ ...prev, chlorineYield: yieldRecord.chlorine_yield === null ? '' : String(yieldRecord.chlorine_yield) }));
+          }
+          if (yieldRecord.hydrochloric_acid_yield !== undefined) {
+            setYields(prev => ({ ...prev, hydrochloricAcidYield: yieldRecord.hydrochloric_acid_yield === null ? '' : String(yieldRecord.hydrochloric_acid_yield) }));
+          }
+        } else {
+          setYields({ yield32Percent: '', yield50Percent: '', chlorineYield: '', hydrochloricAcidYield: '' });
+        }
+
+        // 初始化空数据
+        const initMaterials: Record<string, string> = {};
+        MATERIAL_ITEMS.forEach(item => initMaterials[item.name] = '');
+        const initLabor: Record<string, string> = {};
+        LABOR_MAINTENANCE_ITEMS.forEach(item => initLabor[item.name] = '');
+
+        // 加载原材料成本数据
+        if (materialData.success && materialData.data && materialData.data.length > 0) {
+          materialData.data.forEach((item: { material_name: string; quantity: number }) => {
+            initMaterials[item.material_name] = item.quantity ? String(item.quantity) : '';
+          });
+        }
+
+        // 加载人工与维护成本数据
+        if (laborData.success && laborData.data && laborData.data.length > 0) {
+          laborData.data.forEach((item: { cost_item_name: string; amount: number }) => {
+            initLabor[item.cost_item_name] = item.amount === null ? '' : String(item.amount);
+            if (item.cost_item_name === SALARY_SOURCE_KEY) {
+              initLabor['工人工资及保险'] = item.amount === null ? '' : String(item.amount);
+            }
+          });
+        }
+
+        setCostData({ materials: initMaterials, laborAndMaintenance: initLabor });
+
+        // 加载采购部单价数据
+        if (priceData.success && priceData.data) {
+          const priceMap: Record<string, number> = {};
+          priceData.data.forEach((item: { material_name: string; price: number }) => {
+            priceMap[item.material_name] = item.price || 0;
+          });
+          setPurchasePrices(priceMap);
+        }
+      } catch (error) {
+        console.error('加载数据失败:', error);
+      }
+    };
+
+    loadExistingData();
+  }, [selectedDate, selectedProduct, selectedWorkshop]);
+
+  const handleValueChange = (category: keyof CostData, item: string, value: string) => {
+    setCostData(prev => ({
+      ...prev,
+      [category]: { ...prev[category], [item]: value }
+    }));
+  };
+
+  // 计算生产成本小计
+  const calculateProductionCost = () => {
+    const materialCost = MATERIAL_ITEMS.reduce((sum, item) => {
+      const quantity = parseFloat(costData.materials[item.name]) || 0;
+      if (item.unit === '元') {
+        return sum + quantity;
+      } else {
+        const price = purchasePrices[item.name] || 0;
+        return sum + (quantity * price);
+      }
+    }, 0);
+
+    const laborCost = LABOR_MAINTENANCE_ITEMS.reduce((sum, item) => {
+      return sum + (parseFloat(costData.laborAndMaintenance[item.name]) || 0);
+    }, 0);
+
+    return materialCost + laborCost;
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('username');
+    localStorage.removeItem('loginTime');
+    router.push('/');
+    toast.success('已退出登录');
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedWorkshop || !selectedDate || !selectedProduct) {
+      toast.error('请填写完整的筛选条件');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // 提交产量数据
+      const submitYield = yields.yield32Percent || yields.yield50Percent || yields.chlorineYield || yields.hydrochloricAcidYield;
+      if (submitYield) {
+        const yieldResponse = await fetch('/api/production-yields', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            report_date: selectedDate,
+            product: selectedProduct,
+            workshop: selectedWorkshop,
+            yield32Percent: yields.yield32Percent === '' ? 0 : parseFloat(yields.yield32Percent) || 0,
+            yield50Percent: yields.yield50Percent === '' ? 0 : parseFloat(yields.yield50Percent) || 0,
+            chlorine_yield: yields.chlorineYield === '' ? 0 : parseFloat(yields.chlorineYield) || 0,
+            hydrochloric_acid_yield: yields.hydrochloricAcidYield === '' ? 0 : parseFloat(yields.hydrochloricAcidYield) || 0,
+          }),
+        });
+        if (!yieldResponse.ok) throw new Error('产量数据提交失败');
+      }
+
+      // 提交原材料成本数据
+      await fetch(`/api/material-costs?date=${selectedDate}&product=${selectedProduct}&workshop=${selectedWorkshop}`, { method: 'DELETE' });
+      
+      const materialItems = MATERIAL_ITEMS
+        .filter(item => {
+          const val = parseFloat(costData.materials[item.name] || '0') || 0;
+          return val > 0;
+        })
+        .map(item => ({
+          report_date: selectedDate,
+          material_name: item.name,
+          product: selectedProduct,
+          workshop: selectedWorkshop,
+          quantity: parseFloat(costData.materials[item.name] || '0') || 0,
+          unit: item.unit,
+        }));
+
+      if (materialItems.length > 0) {
+        const materialResponse = await fetch('/api/material-costs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: materialItems }),
+        });
+        if (!materialResponse.ok) throw new Error('原材料成本数据提交失败');
+      }
+
+      // 提交人工与维护成本数据
+      await fetch(`/api/labor-maintenance-costs?date=${selectedDate}&product=${selectedProduct}&workshop=${selectedWorkshop}`, { method: 'DELETE' });
+      
+      const laborItems = LABOR_MAINTENANCE_ITEMS
+        .filter(item => {
+          const val = parseFloat(costData.laborAndMaintenance[item.name] || '0') || 0;
+          return val > 0;
+        })
+        .map(item => ({
+          report_date: selectedDate,
+          cost_item_name: item.name,
+          product: selectedProduct,
+          workshop: selectedWorkshop,
+          amount: parseFloat(costData.laborAndMaintenance[item.name] || '0') || 0,
+          unit: item.unit,
+        }));
+
+      if (laborItems.length > 0) {
+        const laborResponse = await fetch('/api/labor-maintenance-costs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: laborItems }),
+        });
+        if (!laborResponse.ok) throw new Error('人工与维护成本数据提交失败');
+      }
+
+      toast.success('车间成本数据已成功提交');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '提交失败');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* 页面标题 */}
+        <div className="flex items-center justify-between py-6">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+              <Factory className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">车间填报</h1>
+              <p className="text-slate-500 dark:text-slate-400">生产成本填报 - {username}</p>
+            </div>
+          </div>
+          <Button variant="ghost" onClick={handleLogout} className="text-slate-600 dark:text-slate-400">
+            <LogOut className="w-4 h-4 mr-2" />退出登录
+          </Button>
+        </div>
+
+        {/* 筛选条件区域 */}
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 py-4">
+          <CardContent className="pt-2">
+            <div className="grid gap-2 grid-cols-1 md:grid-cols-3">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium text-slate-500">产品</Label>
+                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                  <SelectTrigger className="h-10 bg-white dark:bg-slate-900">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="氯碱">氯碱</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm font-medium text-slate-500">车间</Label>
+                <Select value={selectedWorkshop} onValueChange={setSelectedWorkshop} disabled>
+                  <SelectTrigger className="h-10 bg-white dark:bg-slate-900">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="碱车间">碱车间</SelectItem>
+                    <SelectItem value="氯车间">氯车间</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm font-medium text-slate-500">日期</Label>
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="h-10 w-full justify-start text-left bg-white dark:bg-slate-900">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDate ? format(selectedDateObj!, 'yyyy-MM-dd', { locale: zhCN }) : "选择日期"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar mode="single" selected={selectedDateObj} onSelect={(date) => {
+                      if (date) {
+                        setSelectedDate(format(date, 'yyyy-MM-dd'));
+                        setIsCalendarOpen(false);
+                      }
+                    }} locale={zhCN} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 产量输入 - 仅碱车间显示 */}
+        {selectedWorkshop === '碱车间' && (
+          <Card className="shadow-sm border-amber-200 dark:border-amber-800">
+            <CardHeader className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 py-4">
+              <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <Factory className="w-4 h-4 text-amber-600" />
+                产量统计
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-slate-600">32%烧碱产量（吨）</Label>
+                  <Input type="text" inputMode="decimal" value={yields.yield32Percent}
+                    onChange={(e) => setYields(prev => ({ ...prev, yield32Percent: e.target.value }))}
+                    className="mt-1 h-11" placeholder="0" />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-slate-600">50%烧碱产量（吨）</Label>
+                  <Input type="text" inputMode="decimal" value={yields.yield50Percent}
+                    onChange={(e) => setYields(prev => ({ ...prev, yield50Percent: e.target.value }))}
+                    className="mt-1 h-11" placeholder="0" />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-slate-600">氯产量（吨）</Label>
+                  <Input type="text" inputMode="decimal" value={yields.chlorineYield}
+                    onChange={(e) => setYields(prev => ({ ...prev, chlorineYield: e.target.value }))}
+                    className="mt-1 h-11" placeholder="0" />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-slate-600">盐酸产量（吨）</Label>
+                  <Input type="text" inputMode="decimal" value={yields.hydrochloricAcidYield}
+                    onChange={(e) => setYields(prev => ({ ...prev, hydrochloricAcidYield: e.target.value }))}
+                    className="mt-1 h-11" placeholder="0" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 直接材料成本 */}
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800">
+          <CardHeader className="bg-sky-50 dark:bg-sky-950/30 border-b border-sky-100 py-4">
+            <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-sky-600" />
+              直接材料（数量）
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200">
+              <div className="md:col-span-4 text-lg font-semibold">成本项目</div>
+              <div className="md:col-span-3 text-lg font-semibold text-right">数量</div>
+              <div className="md:col-span-2 text-lg font-semibold text-center">单位</div>
+              <div className="md:col-span-3 text-lg font-semibold text-right">单价（元）</div>
+            </div>
+            <div className="space-y-3">
+              {MATERIAL_ITEMS.map((item) => (
+                <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
+                  <Label className="md:col-span-4 text-lg font-medium text-slate-600">{item.name}</Label>
+                  <Input type="text" inputMode="decimal" placeholder="0" value={costData.materials[item.name] ?? ''}
+                    onChange={(e) => handleValueChange('materials', item.name, e.target.value)}
+                    className="md:col-span-3 h-11" />
+                  <div className="md:col-span-2 text-lg text-slate-500 text-center">{item.unit}</div>
+                  <div className="md:col-span-3 text-lg text-slate-600 text-right">
+                    {purchasePrices[item.name] > 0 ? `¥${purchasePrices[item.name].toFixed(2)}` : '-'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 制造费用 */}
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800">
+          <CardHeader className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 py-4">
+            <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-amber-600" />
+              制造费用
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200">
+              <div className="md:col-span-7 text-lg font-semibold">成本项目</div>
+              <div className="md:col-span-3 text-lg font-semibold text-right">金额（元）</div>
+              <div className="md:col-span-2 text-lg font-semibold text-center">单位</div>
+            </div>
+            <div className="space-y-3">
+              {LABOR_MAINTENANCE_ITEMS.map((item) => (
+                <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
+                  <Label className="md:col-span-7 text-lg font-medium text-slate-600">{item.name}</Label>
+                  <Input type="text" inputMode="decimal" placeholder="0" value={costData.laborAndMaintenance[item.name] ?? ''}
+                    onChange={(e) => handleValueChange('laborAndMaintenance', item.name, e.target.value)}
+                    className="md:col-span-3 h-11" />
+                  <div className="md:col-span-2 text-lg text-slate-500 text-center">{item.unit}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 生产成本小计 */}
+        <Card className="shadow-md border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-slate-900">
+          <CardContent className="py-6">
+            <div className="flex items-center justify-between">
+              <span className="text-xl font-semibold text-slate-700 dark:text-slate-300">生产成本小计</span>
+              <span className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                ¥{calculateProductionCost().toFixed(2)}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-center">
+          <Button onClick={handleSubmit} disabled={isLoading} size="lg"
+            className="min-w-[200px] bg-blue-600 hover:bg-blue-700 text-white shadow-md">
+            <Save className="w-5 h-5 mr-2" />
+            {isLoading ? '提交中...' : '提交数据'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

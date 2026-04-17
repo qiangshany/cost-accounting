@@ -1,0 +1,266 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
+import { ShoppingCart, Save, LogOut, DollarSign, Calendar as CalendarIcon } from 'lucide-react';
+
+// 碱车间材料单价（单位对应碱车间数量填报）
+const MATERIAL_ITEMS: { name: string; unit: string }[] = [
+  { name: '矿盐', unit: '元/吨' },
+  { name: '原盐', unit: '元/吨' },
+  { name: '电', unit: '元/度' },
+  { name: '蒸汽', unit: '元/吨' },
+  { name: '纯碱', unit: '元/千克' },
+  { name: '31%盐酸', unit: '元/吨' },
+  { name: '98%硫酸', unit: '元/吨' },
+  { name: '32%烧碱', unit: '元/吨' },
+  { name: '液氯', unit: '元/吨' },
+  { name: '三氯化铁', unit: '元/吨' },
+  { name: '亚硫酸钠', unit: '元/吨' },
+  { name: '除盐水', unit: '元/吨' },
+];
+
+interface PriceData {
+  materials: Record<string, string>;
+}
+
+export default function PurchasingPage() {
+  const router = useRouter();
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [priceData, setPriceData] = useState<PriceData>({
+    materials: {},
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 检查登录状态和角色
+  useEffect(() => {
+    const loggedIn = localStorage.getItem('isLoggedIn');
+    const userRole = localStorage.getItem('userRole');
+
+    if (loggedIn !== 'true' || userRole !== 'purchasing') {
+      router.push('/');
+      return;
+    }
+  }, [router]);
+
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    setSelectedDate(today);
+  }, []);
+
+  const selectedDateObj = selectedDate ? new Date(selectedDate + 'T00:00:00') : undefined;
+
+  // 初始化价格项
+  useEffect(() => {
+    const materials: Record<string, string> = {};
+    MATERIAL_ITEMS.forEach(item => materials[item.name] = '');
+    setPriceData({ materials });
+  }, []);
+
+  // 加载已有数据
+  useEffect(() => {
+    const loadExistingData = async () => {
+      if (!selectedDate) return;
+
+      const resetMaterials: Record<string, string> = {};
+      MATERIAL_ITEMS.forEach(item => resetMaterials[item.name] = '');
+      
+      const response = await fetch(`/api/purchase-price?date=${selectedDate}`);
+      const data = await response.json();
+
+      if (data.success && data.data && data.data.length > 0) {
+        data.data.forEach((item: { material_name: string; price: number }) => {
+          resetMaterials[item.material_name] = item.price === null ? '' : String(item.price);
+        });
+      }
+      
+      setPriceData({ materials: resetMaterials });
+    };
+
+    loadExistingData();
+  }, [selectedDate]);
+
+  const handleValueChange = (item: string, value: string) => {
+    setPriceData(prev => ({
+      materials: { ...prev.materials, [item]: value }
+    }));
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('username');
+    localStorage.removeItem('loginTime');
+    router.push('/');
+    toast.success('已退出登录');
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedDate) {
+      toast.error('请选择日期');
+      return;
+    }
+
+    const itemsToSubmit = MATERIAL_ITEMS
+      .filter(item => {
+        const val = priceData.materials[item.name] || '';
+        return val !== '' && parseFloat(val) > 0;
+      })
+      .map(item => ({
+        report_date: selectedDate,
+        material_name: item.name,
+        price: parseFloat(priceData.materials[item.name]) || 0,
+        unit: item.unit,
+      }));
+
+    if (itemsToSubmit.length === 0) {
+      toast.error('请至少填写一个材料的价格');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/purchase-price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: itemsToSubmit }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || '提交失败');
+      }
+
+      toast.success('采购单价数据已成功提交');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '提交失败');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-slate-100 dark:from-slate-950 dark:via-emerald-900 dark:to-slate-950 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* 页面标题 */}
+        <div className="flex items-center justify-between py-6">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl">
+              <ShoppingCart className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">
+                采购部填报
+              </h1>
+              <p className="text-slate-500 dark:text-slate-400">最近一次原料采购单价</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            onClick={handleLogout}
+            className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            退出登录
+          </Button>
+        </div>
+
+        {/* 筛选条件区域 */}
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 py-4">
+          <CardContent className="pt-2">
+            <div className="grid gap-2 grid-cols-1 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium text-slate-500 dark:text-slate-500">日期</Label>
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-10 w-full justify-start text-left bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDate ? format(selectedDateObj!, 'yyyy-MM-dd', { locale: zhCN }) : "选择日期"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDateObj}
+                      onSelect={(date) => {
+                        if (date) {
+                          setSelectedDate(format(date, 'yyyy-MM-dd'));
+                          setIsCalendarOpen(false);
+                        }
+                      }}
+                      locale={zhCN}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 原材料采购单价 */}
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800">
+          <CardHeader className="bg-emerald-50 dark:bg-emerald-950/30 border-b border-emerald-100 dark:border-emerald-900/30 py-4">
+            <CardTitle className="text-base text-slate-700 dark:text-slate-300 flex items-center gap-2">
+              <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
+                <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              最近一次原料采购单价
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {/* 表头 */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
+              <div className="md:col-span-7 text-xl font-semibold text-slate-700 dark:text-slate-300">成本项目</div>
+              <div className="md:col-span-2 text-xl font-semibold text-slate-700 dark:text-slate-300 text-right">单价</div>
+              <div className="md:col-span-3 text-xl font-semibold text-slate-700 dark:text-slate-300 text-center">单位</div>
+            </div>
+            <div className="space-y-3">
+              {MATERIAL_ITEMS.map((item) => (
+                <div key={item.name} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center">
+                  <Label htmlFor={`material-${item.name}`} className="md:col-span-7 text-xl font-medium text-slate-600 dark:text-slate-400">
+                    {item.name}
+                  </Label>
+                  <Input
+                    id={`material-${item.name}`}
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={priceData.materials[item.name] ?? ''}
+                    onChange={(e) => handleValueChange(item.name, e.target.value)}
+                    className="md:col-span-2 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xl"
+                  />
+                  <div className="md:col-span-3 text-xl text-slate-500 dark:text-slate-500 text-center">
+                    {item.unit}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-center">
+          <Button
+            onClick={handleSubmit}
+            disabled={isLoading}
+            size="lg"
+            className="min-w-[200px] bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
+          >
+            <Save className="w-5 h-5 mr-2" />
+            {isLoading ? '提交中...' : '提交采购单价'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
