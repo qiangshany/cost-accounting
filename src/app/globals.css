@@ -3,7 +3,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ========================================
+   氯碱厂成本管理系统 - 工业风格主题配置
+   设计理念：专业、稳重、高效的工业管理系统
+   ======================================== */
+
 @theme inline {
+  /* 颜色主题变量 */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -35,6 +41,8 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  
+  /* 圆角系统 */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -42,6 +50,8 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  
+  /* 字体系统 */
   --font-sans:
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', ui-sans-serif,
     system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
@@ -52,86 +62,510 @@
   --font-serif:
     'Noto Serif SC', 'Songti SC', 'SimSun', ui-serif, Georgia, Cambria,
     'Times New Roman', Times, serif;
+    
+  /* 工业风格阴影系统 */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  
+  /* 工业风格边框 */
+  --border-width: 1px;
+  --spacing: 0.25rem;
 }
 
+/* ========================================
+   浅色主题 - 工业蓝灰色调
+   ======================================== */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --radius: 0.5rem;
+  
+  /* 主色调：工业深蓝 */
+  --background: oklch(0.985 0.002 240);
+  --foreground: oklch(0.25 0.02 250);
+  
+  /* 卡片 */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.25 0.02 250);
+  
+  /* 弹出层 */
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0.25 0.02 250);
+  
+  /* 主色：工业蓝 */
+  --primary: oklch(0.45 0.15 245);
+  --primary-foreground: oklch(0.99 0 0);
+  
+  /* 次要色：工业灰 */
+  --secondary: oklch(0.94 0.005 250);
+  --secondary-foreground: oklch(0.35 0.02 250);
+  
+  /* 强调色 */
+  --accent: oklch(0.92 0.01 250);
+  --accent-foreground: oklch(0.25 0.02 250);
+  
+  /* 销毁/警告色 */
+  --destructive: oklch(0.55 0.22 25);
+  
+  /* 输入框 */
+  --input: oklch(0.91 0.005 250);
+  --input-border: oklch(0.88 0.01 250);
+  
+  /* 边框 */
+  --border: oklch(0.91 0.005 250);
+  --ring: oklch(0.45 0.15 245);
+  
+  /* 图表配色 - 工业色板 */
+  --chart-1: oklch(0.45 0.15 245);  /* 工业蓝 */
+  --chart-2: oklch(0.55 0.18 165);  /* 工业绿 */
+  --chart-3: oklch(0.60 0.20 50);   /* 工业橙 */
+  --chart-4: oklch(0.50 0.15 300); /* 工业紫 */
+  --chart-5: oklch(0.65 0.18 200); /* 天蓝色 */
+  
+  /* 侧边栏 */
+  --sidebar: oklch(0.96 0.003 250);
+  --sidebar-foreground: oklch(0.25 0.02 250);
+  --sidebar-primary: oklch(0.45 0.15 245);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.92 0.01 250);
+  --sidebar-accent-foreground: oklch(0.25 0.02 250);
+  --sidebar-border: oklch(0.91 0.005 250);
+  --sidebar-ring: oklch(0.45 0.15 245);
+  
+  /* 功能性颜色 */
+  --muted: oklch(0.93 0.005 250);
+  --muted-foreground: oklch(0.55 0.015 250);
+  
+  /* 成功色 */
+  --success: oklch(0.55 0.18 165);
+  --success-foreground: oklch(0.99 0 0);
+  
+  /* 警告色 */
+  --warning: oklch(0.70 0.18 85);
+  --warning-foreground: oklch(0.25 0.02 0);
+  
+  /* 信息色 */
+  --info: oklch(0.55 0.15 240);
+  --info-foreground: oklch(0.99 0 0);
 }
 
+/* ========================================
+   深色主题 - 深色工业风
+   ======================================== */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --radius: 0.5rem;
+  
+  /* 主色调 */
+  --background: oklch(0.15 0.02 250);
+  --foreground: oklch(0.95 0.003 250);
+  
+  /* 卡片 */
+  --card: oklch(0.20 0.02 250);
+  --card-foreground: oklch(0.95 0.003 250);
+  
+  /* 弹出层 */
+  --popover: oklch(0.20 0.02 250);
+  --popover-foreground: oklch(0.95 0.003 250);
+  
+  /* 主色 */
+  --primary: oklch(0.60 0.18 245);
+  --primary-foreground: oklch(0.15 0.02 250);
+  
+  /* 次要色 */
+  --secondary: oklch(0.25 0.02 250);
+  --secondary-foreground: oklch(0.90 0.005 250);
+  
+  /* 强调色 */
+  --accent: oklch(0.28 0.02 250);
+  --accent-foreground: oklch(0.95 0.003 250);
+  
+  /* 销毁/警告色 */
+  --destructive: oklch(0.60 0.22 25);
+  
+  /* 输入框 */
+  --input: oklch(0.28 0.02 250);
+  --input-border: oklch(0.35 0.02 250);
+  
+  /* 边框 */
+  --border: oklch(0.30 0.02 250);
+  --ring: oklch(0.60 0.18 245);
+  
+  /* 图表配色 */
+  --chart-1: oklch(0.60 0.18 245);
+  --chart-2: oklch(0.65 0.20 165);
+  --chart-3: oklch(0.70 0.22 50);
+  --chart-4: oklch(0.60 0.18 300);
+  --chart-5: oklch(0.70 0.20 200);
+  
+  /* 侧边栏 */
+  --sidebar: oklch(0.18 0.015 250);
+  --sidebar-foreground: oklch(0.95 0.003 250);
+  --sidebar-primary: oklch(0.60 0.18 245);
+  --sidebar-primary-foreground: oklch(0.15 0.02 250);
+  --sidebar-accent: oklch(0.25 0.02 250);
+  --sidebar-accent-foreground: oklch(0.95 0.003 250);
+  --sidebar-border: oklch(0.30 0.02 250);
+  --sidebar-ring: oklch(0.60 0.18 245);
+  
+  /* 功能性颜色 */
+  --muted: oklch(0.25 0.02 250);
+  --muted-foreground: oklch(0.65 0.01 250);
+  
+  /* 成功色 */
+  --success: oklch(0.65 0.20 165);
+  --success-foreground: oklch(0.15 0.02 0);
+  
+  /* 警告色 */
+  --warning: oklch(0.75 0.20 85);
+  --warning-foreground: oklch(0.15 0.02 0);
+  
+  /* 信息色 */
+  --info: oklch(0.65 0.18 240);
+  --info-foreground: oklch(0.15 0.02 0);
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+/* ========================================
+   全局基础样式
+   ======================================== */
+* {
+  border-color: var(--border);
 }
 
 body {
-  @apply font-sans;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========================================
+   滚动条样式
+   ======================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* ========================================
+   选中文字样式
+   ======================================== */
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* ========================================
+   卡片组件增强样式
+   ======================================== */
+.card-glass {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(8px);
+}
+
+.card-glass:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+/* ========================================
+   表格样式增强
+   ======================================== */
+.table-modern {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-modern thead {
+  background: linear-gradient(135deg, var(--primary) 0%, oklch(0.40 0.14 245) 100%);
+}
+
+.table-modern thead th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--primary-foreground);
+  font-size: 0.875rem;
+  letter-spacing: 0.025em;
+}
+
+.table-modern tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.15s ease;
+}
+
+.table-modern tbody tr:hover {
+  background-color: var(--accent);
+}
+
+.table-modern tbody td {
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+}
+
+/* ========================================
+   按钮样式增强
+   ======================================== */
+.btn-industrial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.btn-industrial-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, oklch(0.40 0.14 245) 100%);
+  color: var(--primary-foreground);
+  border: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-industrial-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-industrial-primary:active {
+  transform: translateY(0);
+}
+
+.btn-industrial-secondary {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  border: 1px solid var(--border);
+}
+
+.btn-industrial-secondary:hover {
+  background: var(--accent);
+  border-color: var(--primary);
+}
+
+.btn-industrial-danger {
+  background: var(--destructive);
+  color: white;
+  border: none;
+}
+
+/* ========================================
+   输入框样式增强
+   ======================================== */
+.input-industrial {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--background);
+  color: var(--foreground);
+  transition: all 0.2s ease;
+}
+
+.input-industrial:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px oklch(0.45 0.15 245 / 0.15);
+  ring: 2px solid var(--primary);
+}
+
+.input-industrial::placeholder {
+  color: var(--muted-foreground);
+}
+
+/* ========================================
+   标签样式
+   ======================================== */
+.badge-industrial {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+}
+
+.badge-industrial-primary {
+  background: oklch(0.45 0.15 245 / 0.1);
+  color: var(--primary);
+  border: 1px solid oklch(0.45 0.15 245 / 0.2);
+}
+
+.badge-industrial-success {
+  background: oklch(0.55 0.18 165 / 0.1);
+  color: var(--success);
+  border: 1px solid oklch(0.55 0.18 165 / 0.2);
+}
+
+.badge-industrial-warning {
+  background: oklch(0.70 0.18 85 / 0.1);
+  color: var(--warning);
+  border: 1px solid oklch(0.70 0.18 85 / 0.2);
+}
+
+.badge-industrial-danger {
+  background: oklch(0.55 0.22 25 / 0.1);
+  color: var(--destructive);
+  border: 1px solid oklch(0.55 0.22 25 / 0.2);
+}
+
+/* ========================================
+   页面布局增强
+   ======================================== */
+.page-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--background) 0%, var(--muted) 100%);
+}
+
+.page-header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.page-content {
+  padding: 1.5rem;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* ========================================
+   动画效果
+   ======================================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+.animate-pulse-subtle {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ========================================
+   工具类增强
+   ======================================== */
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary) 0%, oklch(0.50 0.18 300) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.bg-gradient-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, oklch(0.40 0.14 245) 100%);
+}
+
+.bg-gradient-success {
+  background: linear-gradient(135deg, var(--success) 0%, oklch(0.50 0.16 165) 100%);
+}
+
+.bg-gradient-warning {
+  background: linear-gradient(135deg, var(--warning) 0%, oklch(0.65 0.16 85) 100%);
+}
+
+/* ========================================
+   响应式设计
+   ======================================== */
+@media (max-width: 768px) {
+  .page-content {
+    padding: 1rem;
+  }
+  
+  .table-modern thead {
+    display: none;
+  }
+  
+  .table-modern tbody tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+  
+  .table-modern tbody td {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .table-modern tbody td:last-child {
+    border-bottom: none;
+  }
+}
+
+/* ========================================
+   打印样式
+   ======================================== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .page-container {
+    background: white;
+    color: black;
+  }
+  
+  .card-glass {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
 }
