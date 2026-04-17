@@ -81,7 +81,6 @@
     "only-allow": "^1.2.2",
     "react-dev-inspector": "^2.0.1",
     "shadcn": "latest",
-    "tailwindcss": "^4",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "vercel": "^51.6.1"
