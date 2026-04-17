@@ -3,9 +3,6 @@
   "out": "./src/storage/database/migrations",
   "dialect": "postgresql",
   "dbCredentials": {
-    "url": {
-      "from": "env",
-      "name": "COZE_SUPABASE_DB_URL"
-    }
+    "url": "postgres://postgres:vN6SGAcbywQ5hCVz@db.jaokxwquadfshzklviri.supabase.co:5432/postgres?sslmode=require"
   }
 }
