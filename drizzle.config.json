@@ -3,6 +3,9 @@
   "out": "./src/storage/database/migrations",
   "dialect": "postgresql",
   "dbCredentials": {
-    "url": "postgres://postgres:vN6SGAcbywQ5hCVz@db.jaokxwquadfshzklviri.supabase.co:5432/postgres?sslmode=require"
+    "url": {
+      "from": "env",
+      "name": "DATABASE_URL"
+  }
   }
 }
