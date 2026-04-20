@@ -71,6 +71,8 @@
     "typescript": "^5"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
